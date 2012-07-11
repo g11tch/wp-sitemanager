@@ -1,25 +1,44 @@
-Infinity CMSはモジュール式のプラグインです。
-Infinity CMS自体には、モジュールの管理機能のみが実装され、それ以外の機能については、すべてモジュールにより実現されるようになっています。
+=== WP SiteManager ===
+Contributors: primestrategy, jim912
+Tags: cms, mobile, sitemap, pager, page navi, breadcrumb
+Requires at least: 3.3
+Tested up to: 3.4.1
+Stable tag: 1.0.0
 
+WP SiteManager is an integrated package comprising of necessary functions for using WordPress as a CMS.
 
-モジュールの仕様について
-モジュールとして扱われるのは、modulesディレクトリに配置したPHPファイルの中で、有効なコメントが記述されたものとなります。
+== Description ==
+The functional value of WordPress as a CMS increases with each version, and the current 3.4 makes good usage of custom post types and custom taxonomies, meaning the creation of diverse content is possible. However, with these function additions, site structure has become complicated, and situations have arisen where the display of relevant navigation, such as site maps and breadcrumbs, does not appear as intended.
 
-コメント形式については、下記の通りとなります。
+WP SiteManager makes it possible to make unified adjustments for this kind of inconsistent navigation using setup via control screens.
+In addition, it also makes possible snippet optimization through management of meta information, and optimization of various environments through a theme switching function by device.
 
-/*
- * cms module:         モジュール名
- * Module Description: モジュールの説明
- * Order:              モジュール管理画面での表示順
- * First Introduced:   モジュールが導入されたInfinity CMSのバージョン
- * Builtin:            モジュール管理とするかどうか。管理から外す（自動でon）場合は1かture
- * Major Changes In:   未使用
- * Free:               有料モジュールかどうかの判別（未使用）
-*/
+= Functions =
+1. Site Map Display
+2. Breadcrumb Display
+3. Page Navigation (Pager) Display
+4. Sub-Navigation Display
+5. Device Recognition and Theme Switching Function
+6. Settings for Meta Keywords & Description
 
-■TODO
-○moduleds/site-structure.php
-済 ドロップダウンページリストの順序不整合修正
-・ 設定項目の反映
-・ 設定方法の見直し
-・ ソースのリファクタリング
+= Usage =
+* You can find settings of default taxonomy and taxonomy selection on Writing Settings.
+* You can find setting of displaying taxonomies on Right Now in Your Profile.
+* You can find "Term order" menu on Settings screen.
+* You can find settings of displaying custom taxonomies on posts and pages list. 
+
+== Installation ==
+
+1. Upload the WP SiteManager folder to the plugins directory in your WordPress installation
+2. Go to plugins list and activate "WP SiteManager". 
+
+== Changelog ==
+
+= 1.0.0 =
+* Released publically
+
+== Screenshots ==
+1. WP SiteManager Module management page.
+2. SEO & SMO setting page.
+3. Sitemap setting page.
+4. Device theme setting page

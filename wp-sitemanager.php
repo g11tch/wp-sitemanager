@@ -4,13 +4,13 @@
  Plugin URI: http://www.prime-strategy.co.jp/
  Description: 
  Author: Prime Strategy Co.,LTD.
- Version: 1.0.0
+ Version: 1.0.1
  Author URI: http://www.prime-strategy.co.jp/
  License: GPLv2 or later
 */
 
 class WP_SiteManager {
-	var $version = '1.0.0';
+	var $version = '1.0.1';
 	var $enable_modules;
 	var $instance;
 	var $root;

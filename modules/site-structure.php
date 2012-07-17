@@ -7,16 +7,23 @@
  * Major Changes In:	
  * Builtin:				true
  * Free:				true
+ * Module Version:		1.0.1
  * License:				GPLv2 or later
 */
 
 class site_structure {
 	var $parent;
 	var $settings;
+	var $styles_dir;
+	var $styles_dir_url;
+
 	function __construct( $parent ) {
 		// infinity cmsのオブジェクトをプロパティにセット
 		$this->parent = $parent;
-		
+		$this->styles_dir['base'] = plugin_dir_path( dirname( __FILE__ ) ) . 'sitemap-styles/';
+		$this->styles_dir['extra'] = WP_CONTENT_DIR . '/sitemap-styles/';
+		$this->styles_dir_url['base'] = plugin_dir_url( dirname( __FILE__ ) ) . 'sitemap-styles/';
+		$this->styles_dir_url['extra'] = WP_CONTENT_URL . '/sitemap-styles/';
 		$this->settings['structure'] = get_option( 'wp-sitemanager-site-structure' );
 		$this->settings['sitemap'] = get_option( 'wp-sitemanager-sitemap-settings' );
 		if ( is_admin() ) {
@@ -36,6 +43,8 @@ class site_structure {
 			add_action( 'wp_loaded'						, array( &$this, 'taxonomy_update_hooks' ), 9999 );
 			
 			add_action( 'admin_print_styles-wp-sitemanager_page_wp-sitemanager-structure', array( &$this->parent, 'print_icon_style' ) );
+		} else {
+			add_action( 'wp'							, array( &$this, 'enqueue_sitemap_style' ) );
 		}
 		// カテゴリーページクラスのインスタンス生成
 		new category_page;
@@ -59,6 +68,7 @@ class site_structure {
 	 */
 	public function setting_page() {
 		$post_types = get_post_types( array( 'public' => true, 'show_in_menu' => true ), false );
+		$sitemap_styles = $this->get_sitemap_styles();
 ?>
 <div class="wrap">
 	<?php screen_icon( 'prime-icon32' ); ?>
@@ -178,8 +188,14 @@ endfor;
 			<tr>
 				<th>スタイルの変更</th>
 				<td>
-					<select name="sitemap[prepared_style]" id="sitemap_prepared_style">
+					<select name="sitemap[style]" id="sitemap_style">
 						<option value="" selected="selected">スタイルなし</option>
+<?php if ( $sitemap_styles ) : foreach ( $sitemap_styles as $slug => $sitemap_style ) :
+	$selected = $this->settings['sitemap']['style']['path'] == $sitemap_style['path'] ? ' selected="selected"' : '';
+
+?>
+						<option value="<?php echo esc_attr( $slug ); ?>"<?php echo $selected; ?>><?php echo esc_html( $sitemap_style['name'] ); ?></option>
+<?php endforeach; endif; ?>
 					</select>
 				</td>
 			</tr>
@@ -208,6 +224,10 @@ endfor;
 			$post_data = stripslashes_deep( $_POST );
 			update_option( 'wp-sitemanager-site-structure', $post_data['site_structure'] );
 			$this->settings['structure'] = get_option( 'wp-sitemanager-site-structure' );
+			$sitemap_styles = $this->get_sitemap_styles();
+			if ( isset( $sitemap_styles[$post_data['sitemap']['style']] ) && $sitemap_styles[$post_data['sitemap']['style']]['name'] ) {
+				$post_data['sitemap']['style'] = $sitemap_styles[$post_data['sitemap']['style']];
+			}
 			update_option( 'wp-sitemanager-sitemap-settings', $post_data['sitemap'] );
 			$this->settings['sitemap'] = get_option( 'wp-sitemanager-sitemap-settings' );
 		}
@@ -397,6 +417,42 @@ AND			`meta_value` = '1'
 		if ( $key !== false ) {
 			array_splice( $ex_cats, $key, 1 );
 			update_option( 'infinity_exclude_terms', $ex_cats );
+		}
+	}
+	
+	
+	private function get_sitemap_styles() {
+		$header_items = array(
+			'name'        => 'Style Name',
+			'description' => 'Description',
+			'version'     => 'Version'
+		);
+		$styles = array();
+
+		foreach ( $this->styles_dir as $dir_term => $style_dir ) {
+			if ( !$dir = @opendir( $style_dir ) ) {
+				continue;
+			}
+			while ( false !== $file = readdir( $dir ) ) {
+				if ( file_exists( $style_dir . $file . '/sitemap.css' ) ) {
+					$file_data = get_file_data( $style_dir . $file . '/sitemap.css', $header_items, 'sitemap-styles' );
+					if ( $file_data['name'] ) {
+						$file_data['path'] = $style_dir . $file . '/sitemap.css';
+						$file_data['url'] = $this->styles_dir_url[$dir_term] . $file . '/sitemap.css';
+						$styles[$file] = $file_data;
+					}
+				}
+			}
+		}
+		asort( $styles );
+		return $styles;
+	}
+	
+	
+	public function enqueue_sitemap_style() {
+		global $post;
+		if ( is_singular() && strpos( $post->post_content, '[sitemap]' ) !== false && file_exists( $this->settings['sitemap']['style']['path'] ) ) {
+			wp_enqueue_style( 'sitemap-style', $this->settings['sitemap']['style']['url'], array(), $this->settings['sitemap']['style']['version'] );
 		}
 	}
 } // class end

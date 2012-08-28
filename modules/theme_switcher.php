@@ -15,6 +15,10 @@
 require_once( ABSPATH . 'wp-admin/includes/class-wp-list-table.php' );
 class theme_switcher {
 
+	var $device_theme = false;
+
+	var $current_group = false;
+
 	function __construct( $parent ) {
 		global $wpdb;
 		$this->parent = $parent;
@@ -474,11 +478,11 @@ endif;
 		$ua = $_SERVER['HTTP_USER_AGENT'];
 		$regexes = get_option( 'sitemanager_device_rules', array() );
 
-		foreach ( $regexes as $group => $arr ) {
+		foreach ( $regexes as $this->current_group => $arr ) {
 			$regex = '/' . implode( '|', $arr['regex'] ) . '/';
 			if ( preg_match( $regex, $ua ) ) {
 				$this->device_theme = $arr['theme'];
-				return $group;
+				return $this->current_group;
 			}
 		}
 		return false;
@@ -643,6 +647,12 @@ ORDER BY d.device_id ASC
 	public function add_vary_header( $headers ) {
 		$headers['Vary'] = 'User-Agent';
 		return $headers;
+	}
+	
+	
+	public function is_device( $slug ) {
+		global $WP_SiteManager;
+		return in_array( $WP_SiteManager->instance->theme_switcher->current_group, (array)$slug );
 	}
 } // class end
 $this->instance->$slug = new theme_switcher( $this );

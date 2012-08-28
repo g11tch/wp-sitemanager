@@ -4,19 +4,22 @@
  Plugin URI: http://www.prime-strategy.co.jp/
  Description: 
  Author: Prime Strategy Co.,LTD.
- Version: 1.0.1
+ Version: 1.0.2
  Author URI: http://www.prime-strategy.co.jp/
  License: GPLv2 or later
 */
 
 class WP_SiteManager {
-	var $version = '1.0.1';
+	var $version;
 	var $enable_modules;
 	var $instance;
 	var $root;
 	var $api_server = '';
 
 	function __construct() {
+		$data = get_file_data( __FILE__, array( 'version' => 'Version' ) );
+		$this->version = $data['version'];
+
 		define( 'CMS_MODULE_DIR', dirname( __FILE__ ) . '/modules' );
 		$this->root = plugin_basename( __FILE__ );
 		if ( is_admin() ) {

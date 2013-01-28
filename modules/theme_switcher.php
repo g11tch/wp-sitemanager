@@ -16,8 +16,8 @@ require_once( ABSPATH . 'wp-admin/includes/class-wp-list-table.php' );
 class theme_switcher {
 
 	var $device_theme = false;
-
 	var $current_group = false;
+	var $avaiable_themes;
 
 	function __construct( $parent ) {
 		global $wpdb;
@@ -25,20 +25,26 @@ class theme_switcher {
 		$this->device_table = $wpdb->prefix . 'sitemanager_device';
 		$this->group_table = $wpdb->prefix . 'sitemanager_device_group';
 		$this->relation_table = $wpdb->prefix . 'sitemanager_device_relation';
+
+		add_action( 'plugins_loaded'                                                    , array( &$this, 'get_avaiable_themes' ), 9 );
+		add_action( 'wpmu_new_blog'                                                     , array( &$this, 'create_ms_' ) );
+		if ( ! is_admin() ) {
+			add_action( 'plugins_loaded'                                                , array( &$this, 'switch_theme' ) );
+			add_filter( 'wp_headers'                                                    , array( &$this, 'add_vary_header' ) );
+		} else {
+			add_action( 'load-wp-sitemanager_page_wp-sitemanager-device'                , array( &$this, 'update_device_setting' ) );
+			add_action( 'admin_menu'                                                    , array( &$this, 'add_setting_menu' ) );
+			add_action( 'admin_print_styles-wp-sitemanager_page_wp-sitemanager-device'  , array( &$this->parent, 'print_icon_style' ) );
+			add_action( 'enabled_sitemanager_module-theme_switcher'                     , array( &$this, 'do_activation_module_hook' ) );
+		}
+	}
+	
+	
+	public function get_avaiable_themes() {
 		if ( function_exists( 'wp_get_themes' ) ) {
 			$this->avaiable_themes =  wp_get_themes();
 		} else {
 			$this->avaiable_themes =  get_themes();
-		}
-
-		if ( ! is_admin() ) {
-			add_action( 'plugins_loaded'		, array( &$this, 'switch_theme' ) );
-			add_filter( 'wp_headers'			, array( &$this, 'add_vary_header' ) );
-		} else {
-			add_action( 'load-wp-sitemanager_page_wp-sitemanager-device'				, array( &$this, 'update_device_setting' ) );
-			add_action( 'admin_menu'													, array( &$this, 'add_setting_menu' ) );
-			add_action( 'admin_print_styles-wp-sitemanager_page_wp-sitemanager-device'	, array( &$this->parent, 'print_icon_style' ) );
-			add_action( 'enabled_sitemanager_module-theme_switcher'						, array( &$this, 'do_activation_module_hook' ) );
 		}
 	}
 
@@ -106,6 +112,8 @@ class theme_switcher {
 			$redirect = add_query_arg( array( 'result' => 'updated' ) );
 		}
 		$this->build_device_rules();
+		do_action( 'theme_switcher/device_group_updated', $group_id, $action );
+
 		if ( $redirect ) {
 			wp_redirect( $redirect );
 			exit;
@@ -163,6 +171,8 @@ class theme_switcher {
 			}
 		}
 		$this->build_device_rules();
+		do_action( 'theme_switcher/device_updated', $device_id, $action );
+		
 		if ( $redirect ) {
 			wp_redirect( $redirect );
 			exit;
@@ -201,6 +211,13 @@ class theme_switcher {
 		$device_id = (int)$device_id;
 		$device = $this->get_device( $device_id );
 		return (bool)$device->builtin;
+	}
+	
+	
+	public function do_ms_activation_module_hook( $blog_id ) {
+		switch_to_blog( $blog_id );
+		$this->do_activation_module_hook();
+		restore_current_blog();
 	}
 	
 	
@@ -655,7 +672,7 @@ ORDER BY d.device_id ASC
 		return in_array( $WP_SiteManager->instance->theme_switcher->current_group, (array)$slug );
 	}
 } // class end
-$this->instance->$slug = new theme_switcher( $this );
+$this->instance->$instanse = new theme_switcher( $this );
 
 
 class SiteManager_Device_Group_List_Table extends WP_List_Table {

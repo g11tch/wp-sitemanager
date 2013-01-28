@@ -4,7 +4,7 @@
  Plugin URI: http://www.prime-strategy.co.jp/
  Description: 
  Author: Prime Strategy Co.,LTD.
- Version: 1.0.2
+ Version: 1.0.3
  Author URI: http://www.prime-strategy.co.jp/
  License: GPLv2 or later
 */
@@ -19,6 +19,7 @@ class WP_SiteManager {
 	function __construct() {
 		$data = get_file_data( __FILE__, array( 'version' => 'Version' ) );
 		$this->version = $data['version'];
+		$this->instance = new stdClass();
 
 		define( 'CMS_MODULE_DIR', dirname( __FILE__ ) . '/modules' );
 		$this->root = plugin_basename( __FILE__ );
@@ -287,7 +288,7 @@ endif;
 	 * @since 0.0.1
 	 */
 	private function get_disabled_modules() {
-		return get_option( 'disabled_modules', array() );
+		return apply_filters( 'wp-sitemanager/disabled_modules', get_option( 'disabled_modules', array() ) );
 	}
 
 	/*

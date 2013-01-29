@@ -751,15 +751,29 @@ class Walker_pageNavi extends Walker_Page {
 	}
 
 
-	function start_el( &$output, $page, $depth, $args, $current_page ) {
+	function start_el( &$output, $page, $depth, $args, $current_page = 0 ) {
 		if ( $depth )
 			$indent = str_repeat("\t", $depth);
 		else
 			$indent = '';
 
 		extract($args, EXTR_SKIP);
+		
+		$css_class = array( 'sitenavi-pages', 'level-' . $depth + 1,
+		);
+		if ( !empty( $current_page ) ) {
+			$_current_page = get_post( $current_page );
+			if ( in_array( $page->ID, $_current_page->ancestors ) )
+				$css_class[] = 'current-page-ancestor';
+			if ( $page->ID == $current_page )
+				$css_class[] = 'current-page-item';
+			elseif ( $_current_page && $page->ID == $_current_page->post_parent )
+				$css_class[] = 'current-page-parent';
+		} elseif ( $page->ID == get_option( 'page_for_posts' ) ) {
+			$css_class[] = 'current-page-parent';
+		}
 
-		$output .= $indent . '<li class="sitenavi-pages level-' . ( $depth + 1 ) . '"><a href="' . get_permalink($page->ID) . '">' . $link_before . apply_filters( 'the_title', $page->post_title, $page->ID ) . $link_after . '</a>';
+		$output .= $indent . '<li class="' . implode( ' ', $css_class ) . '"><a href="' . get_permalink($page->ID) . '">' . $link_before . apply_filters( 'the_title', $page->post_title, $page->ID ) . $link_after . '</a>';
 	}
 
 
@@ -856,7 +870,7 @@ class Walker_pageNavi extends Walker_Page {
 		}
 
 		$custom_structure = get_option( 'wp-sitemanager-site-structure' );
-		if ( ! isset( $custom_structure[$post_type] ) ) { return; }
+		if ( ! isset( $custom_structure[$post_type]['object'] ) ) { return; }
 		switch ( $custom_structure[$post_type]['object'] ) {
 			case 'archive' :
 				if ( is_post_type_hierarchical( $post_type ) ) {

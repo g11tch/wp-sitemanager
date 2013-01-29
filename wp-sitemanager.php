@@ -4,7 +4,7 @@
  Plugin URI: http://www.prime-strategy.co.jp/
  Description: 
  Author: Prime Strategy Co.,LTD.
- Version: 1.0.3
+ Version: 1.0.4
  Author URI: http://www.prime-strategy.co.jp/
  License: GPLv2 or later
 */

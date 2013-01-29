@@ -77,7 +77,7 @@ function add_setting_menu() {
 }
 
 function cache_setting_page() {
-	$life_time = get_option( 'site_cache_life', array( 'home' => 60, 'archive' => 60, 'singular' => 360 ) );
+	$life_time = get_option( 'site_cache_life', array( 'home' => 60, 'archive' => 60, 'singular' => 360, 'exclude' => '' ) );
 	$clear_link = add_query_arg( array( 'del_cache' => '1' ) );
 ?>
 <div class="wrap">
@@ -107,7 +107,7 @@ function cache_setting_page() {
 		<tr>
 			<th>キャッシュ除外URL</th>
 			<td>
-				<textarea cols="70" rows="5" name="site_cache_life[exclude]"><?php echo wp_specialchars( $life_time['exclude'] ); ?></textarea>
+				<textarea cols="70" rows="5" name="site_cache_life[exclude]"><?php echo esc_html( $life_time['exclude'] ); ?></textarea>
 				<br />キャッシュを除外したい、URLパターン（正規表現利用可）を指定できます。複数のパターンを指定する場合は、改行を入れてください。
 			</td>
 		</tr>

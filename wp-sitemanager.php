@@ -2,9 +2,9 @@
 /*
  Plugin Name: WP SiteManager
  Plugin URI: http://www.prime-strategy.co.jp/
- Description: 
+ Description: WP SiteManager は、WordPress を CMS として利用する際に必須となる機能を複数搭載した統合プラグインです。
  Author: Prime Strategy Co.,LTD.
- Version: 1.0.4
+ Version: 1.0.5
  Author URI: http://www.prime-strategy.co.jp/
  License: GPLv2 or later
 */
@@ -397,6 +397,10 @@ endif;
 	padding: 20px 0;
 	border-top: solid 1px #fff;
 	border-bottom: solid 1px #ddd;
+}
+#og-image img {
+	max-width: 150px;
+	max-height: 150px;
 }
 </style>
 <?php

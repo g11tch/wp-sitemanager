@@ -186,7 +186,6 @@ private function get_bread_crumb_array( $args ) {
 				$bread_crumb_arr = array_merge( $bread_crumb_arr, $singular_bread_crumb_arr );
 			}
 		}
-		$bread_crumb_arr[] = array( 'title' => $parent_post->post_title, 'link' => get_permalink( $parent_post->ID ) );
 		$bread_crumb_arr[] = array( 'title' => sprintf( $args['attachment_label'], $post->post_title ), 'link' => get_permalink( $post->ID ) );
 	} elseif ( is_singular() && ! is_front_page() ) {
 		$singular_bread_crumb_arr = $this->get_singular_bread_crumb_array( $post, $args );
@@ -276,10 +275,14 @@ private function get_bread_crumb_array( $args ) {
 
 private function get_singular_bread_crumb_array( $post, $args ) {
 	$bread_crumb_arr = array();
+	$ignore_id = false;
+	if ( get_option( 'show_on_front' ) == 'page' ) {
+		$ignore_id = get_option( 'page_on_front' );
+	}
 	$post_type = get_post_type_object( $post->post_type );
-	if ( isset( $this->site_structure[$post->post_type] ) && $this->site_structure[$post->post_type]['page'] != 0 ) {
+	if ( isset( $this->site_structure[$post->post_type] ) && $this->site_structure[$post->post_type]['page'] != 0 && $ignore_id != $this->site_structure[$post->post_type]['page'] ) {
 		$parent_page = get_post( $this->site_structure[$post->post_type]['page'] );
-		_get_post_ancestors( $parent_page );
+		$parent_page->ancestors = get_post_ancestors( $parent_page );
 		$singular_bread_crumb_arr = $this->get_singular_bread_crumb_array( $parent_page, $args );
 		$singular_bread_crumb_arr[] = array( 'title' => $parent_page->post_title, 'link' => get_permalink( $parent_page->ID ) );
 		$bread_crumb_arr = array_merge( $bread_crumb_arr, $singular_bread_crumb_arr );
@@ -295,7 +298,7 @@ private function get_singular_bread_crumb_array( $post, $args ) {
 			$ancestor_posts = get_posts( 'post_type=' . $post_type->name . '&include=' . implode( ',', $ancestors ) );
 			foreach( $ancestors as $ancestor ) {
 				foreach ( $ancestor_posts as $ancestor_post ) {
-					if ( $ancestor == $ancestor_post->ID ) {
+					if ( $ancestor == $ancestor_post->ID && $ancestor != $ignore_id ) {
 						$bread_crumb_arr[] = array( 'title' => apply_filters( 'the_title', $ancestor_post->post_title ), 'link' => get_permalink( $ancestor_post->ID ) );
 					}
 				}
@@ -363,10 +366,12 @@ private function add_posts_page_array( $bread_crumb_arr ) {
 
 private function get_parent_page_array( $post_type, $args ) {
 	$parent_page_array = array();
-	$parent_page = get_post( $this->site_structure[$post_type]['page'] );
-	_get_post_ancestors( $parent_page );
-	$parent_page_array = $this->get_singular_bread_crumb_array( $parent_page, $args );
-	$parent_page_array[] = array( 'title' => $parent_page->post_title, 'link' => get_permalink( $parent_page->ID ) );
+	if ( get_option( 'show_on_front' ) == 'page' && get_option( 'page_on_front' ) != $this->site_structure[$post_type]['page'] ) {
+		$parent_page = get_post( $this->site_structure[$post_type]['page'] );
+		$parent_page->ancestors = get_post_ancestors( $parent_page );
+		$parent_page_array = $this->get_singular_bread_crumb_array( $parent_page, $args );
+		$parent_page_array[] = array( 'title' => $parent_page->post_title, 'link' => get_permalink( $parent_page->ID ) );
+	}
 	return $parent_page_array;
 }
 

@@ -59,7 +59,7 @@ class site_structure {
 	 * @since 0.0.1
 	 */
 	public function add_sitemap_page() {
-		add_submenu_page( $this->parent->root, 'サイトマップ', 'サイトマップ', 'administrator', basename( $this->parent->root ) . '-structure', array( &$this, 'setting_page' ) );
+		add_submenu_page( $this->parent->root, 'サイト構造', 'サイト構造', 'administrator', basename( $this->parent->root ) . '-structure', array( &$this, 'setting_page' ) );
 	}
 	
 	/*
@@ -82,7 +82,7 @@ class site_structure {
 		<table class="form-table">
 <?php
 foreach ( $post_types as $post_type ) :
-	if ( $post_type->name == 'page' ) { continue; }
+	if ( in_array( $post_type->name, array( 'page', 'attachment' ) ) ) { continue; }
 	$taxonomies = get_object_taxonomies( $post_type->name, false );
 	if ( isset( $this->settings['structure'][$post_type->name]['page'] ) ) {
 		$selected = '&selected=' . $this->settings['structure'][$post_type->name]['page'];
@@ -451,7 +451,7 @@ AND			`meta_value` = '1'
 	
 	public function enqueue_sitemap_style() {
 		global $post;
-		if ( is_singular() && strpos( $post->post_content, '[sitemap]' ) !== false && file_exists( $this->settings['sitemap']['style']['path'] ) ) {
+		if ( is_singular() && strpos( $post->post_content, '[sitemap]' ) !== false && isset( $this->settings['sitemap']['style']['path'] ) && file_exists( $this->settings['sitemap']['style']['path'] ) ) {
 			wp_enqueue_style( 'sitemap-style', $this->settings['sitemap']['style']['url'], array(), $this->settings['sitemap']['style']['version'] );
 		}
 	}
@@ -1154,8 +1154,8 @@ class infinity_sub_navi_widget extends WP_Widget {
 			
 			$depth = absint( $instance['page_disp_level'] ) ? absint( $instance['page_disp_level'] ) : $this->defaults['page_disp_level'];
 
+			$walker = new Walker_pageNavi;
 			if ( $instance['page_display_child_of'] && ! in_array( $child_of, explode( ',', $instance['page_exclude_tree'] ) ) ) {
-				$walker = new Walker_pageNavi;
 				$output .= wp_list_pages(
 					array(
 						'echo'     => 0,

@@ -27,7 +27,7 @@ class theme_switcher {
 		$this->relation_table = $wpdb->prefix . 'sitemanager_device_relation';
 
 		add_action( 'plugins_loaded'                                                    , array( &$this, 'get_avaiable_themes' ), 9 );
-		add_action( 'wpmu_new_blog'                                                     , array( &$this, 'create_ms_' ) );
+		add_action( 'wpmu_new_blog'                                                     , array( &$this, 'do_ms_activation_module_hook' ) );
 		if ( ! is_admin() ) {
 			add_action( 'plugins_loaded'                                                , array( &$this, 'switch_theme' ) );
 			add_filter( 'wp_headers'                                                    , array( &$this, 'add_vary_header' ) );
@@ -50,7 +50,7 @@ class theme_switcher {
 
 
 	public function add_setting_menu() {
-		add_submenu_page( $this->parent->root, 'デバイス判定', 'デバイス判定', 'administrator', basename( $this->parent->root ) . '-device', array( &$this, 'setting_page_controller' ) );
+		add_submenu_page( $this->parent->root, 'マルチデバイス', 'マルチデバイス', 'administrator', basename( $this->parent->root ) . '-device', array( &$this, 'setting_page_controller' ) );
 	}
 
 
@@ -215,9 +215,16 @@ class theme_switcher {
 	
 	
 	public function do_ms_activation_module_hook( $blog_id ) {
+		global $wpdb;
 		switch_to_blog( $blog_id );
+		$this->device_table = $wpdb->prefix . 'sitemanager_device';
+		$this->group_table = $wpdb->prefix . 'sitemanager_device_group';
+		$this->relation_table = $wpdb->prefix . 'sitemanager_device_relation';
 		$this->do_activation_module_hook();
 		restore_current_blog();
+		$this->device_table = $wpdb->prefix . 'sitemanager_device';
+		$this->group_table = $wpdb->prefix . 'sitemanager_device_group';
+		$this->relation_table = $wpdb->prefix . 'sitemanager_device_relation';
 	}
 	
 	
@@ -227,6 +234,7 @@ class theme_switcher {
 		
 		$sql = "SHOW TABLES FROM `{$wpdb->dbname}` LIKE '{$this->device_table}'";
 		$table_exists = $wpdb->get_var( $sql );
+
 		if ( ! $table_exists ) {
 			$sql = "
 CREATE TABLE `{$this->device_table}` (
@@ -252,6 +260,7 @@ INSERT INTO `{$this->device_table}` (`device_id`, `device_name`, `keyword`, `bui
 		
 		$sql = "SHOW TABLES FROM `{$wpdb->dbname}` LIKE '{$this->group_table}'";
 		$table_exists = $wpdb->get_var( $sql );
+
 		if ( ! $table_exists ) {
 			$sql = "
 CREATE TABLE `{$this->group_table}` (
@@ -274,6 +283,7 @@ INSERT INTO `{$this->group_table}` (`group_id`, `group_name`, `theme`, `slug`, `
 
 		$sql = "SHOW TABLES FROM `{$wpdb->dbname}` LIKE '{$this->relation_table}'";
 		$table_exists = $wpdb->get_var( $sql );
+
 		if ( ! $table_exists ) {
 			$sql = "
 CREATE TABLE `{$this->relation_table}` (

@@ -13,10 +13,12 @@ class WP_SiteManager_cache{
 	
 	private $cache_dir;
 	private $advance_cache_tpl;
+	private $regex_include_tpl;
 	private $headers = array();
 
 function __construct( $parent ) {
 	$this->advance_cache_tpl = plugin_dir_path( dirname( __FILE__ ) ) . 'advanced_cache_tpl/advanced-cache.tpl';
+	$this->regex_include_tpl = plugin_dir_path( dirname( __FILE__ ) ) . 'advanced_cache_tpl/regex_include.tpl';
 	$this->parent = $parent;
 	if ( is_admin() ) {
 		add_action( 'admin_menu'                                   , array( &$this, 'add_setting_menu' ) );
@@ -25,7 +27,7 @@ function __construct( $parent ) {
 		add_action( 'theme_switcher/device_updated'                , array( &$this, 'generate_advanced_cache_file' ) );
 //		add_action( 'theme_switcher/device_group_updated'          , array( &$this, 'clear_all_cache' ) );
 		add_action( 'theme_switcher/device_group_updated'          , array( &$this, 'generate_advanced_cache_file' ) );
-//		add_action( 'transition_post_status'                       , array( &$this, 'post_publish_clear_cache' ) );
+		add_action( 'transition_post_status'                       , array( &$this, 'post_publish_clear_cache' ), 10, 3 );
 //		add_action( 'delete_term'                                  , array( &$this, 'clear_all_cache' ) );
 //		add_action( 'edited_term'                                  , array( &$this, 'clear_all_cache' ) );
 //		add_action( 'deleted_user'                                 , array( &$this, 'clear_all_cache' ) );
@@ -77,7 +79,7 @@ function add_setting_menu() {
 }
 
 function cache_setting_page() {
-	$life_time = get_option( 'site_cache_life', array( 'home' => 60, 'archive' => 60, 'singular' => 360, 'exclude' => '' ) );
+	$life_time = get_option( 'site_cache_life', array( 'home' => 60, 'archive' => 60, 'singular' => 360, 'exclude' => '', 'update' => 'none' ) );
 	$clear_link = add_query_arg( array( 'del_cache' => '1' ) );
 ?>
 <div class="wrap">
@@ -112,7 +114,14 @@ function cache_setting_page() {
 			</td>
 		</tr>
 	</table>
-	<?php submit_button( NULL, 'primary', 'site-cache-settings' ); ?>
+<h3>記事公開時に削除するキャッシュの範囲</h3>
+	<select name="site_cache_life[update]">
+		<option value="none"<?php echo $life_time['update'] == 'none' ? ' selected="selected"' : ''; ?>>削除しない</option>
+		<option value="single"<?php echo $life_time['update'] == 'single' ? ' selected="selected"' : ''; ?>>記事のみ</option>
+		<option value="with-front"<?php echo $life_time['update'] == 'with-front' ? ' selected="selected"' : ''; ?>>記事とトップページ</option>
+		<option value="all"<?php echo $life_time['update'] == 'all' ? ' selected="selected"' : ''; ?>>すべて</option>
+	</select>
+		<?php submit_button( NULL, 'primary', 'site-cache-settings' ); ?>
 </form>
 <h3>キャッシュのクリア</h3>
 	<a href="<?php echo $clear_link; ?>" class="button">キャッシュを全てクリア</a>
@@ -131,7 +140,7 @@ function update_cache_setting() {
 		check_admin_referer( 'site-cache-settings' );
 		$settings = array();
 		foreach ( $_POST['site_cache_life'] as $key => $minutes ) {
-			if ( function_exists( 'mb_convert_kana' ) && $key != 'exclude' ) {
+			if ( function_exists( 'mb_convert_kana' ) && ! in_array( $key, array( 'exclude', 'update' ) ) ) {
 				$minutes = mb_convert_kana( $minutes, 'n', 'UTF-8' );
 				$minutes = preg_replace( '/[\D]/', '', $minutes );
 				$minutes = absint( $minutes );
@@ -165,9 +174,52 @@ function clear_all_cache() {
 }
 
 
-function post_publish_clear_cache( $new_status ) {
+function clear_front_cache() {
+	global $wpdb;
+	$sql = "
+DELETE
+FROM	`{$wpdb->prefix}site_cache`
+WHERE	`type` = 'front'
+";
+	$wpdb->query( $sql );
+}
+
+
+function clear_single_cache( $post ) {
+	global $wpdb;
+	$permalink = get_permalink( $post->ID );
+	var_dump( $permalink);
+	$permalink = parse_url( $permalink );
+	$device_url = '|' . $permalink['path'];
+	if ( isset( $permalink['query'] ) && $permalink['query'] ) {
+		$device_url .= '?' . $permalink['query'];
+	}
+	var_dump( $permalink, $device_url );
+	$sql = "
+DELETE
+FROM	`{$wpdb->prefix}site_cache`
+WHERE	`type` = 'single'
+AND		`device_url` LIKE '%$device_url%'
+";
+	$wpdb->query( $sql );
+}
+
+
+function post_publish_clear_cache( $new_status, $old_status, $post ) {
 	if ( $new_status == 'publish' ) {
-		$this->clear_all_cache();
+		$life_time = get_option( 'site_cache_life', array( 'update' => 'none' ) );
+		switch ( $life_time['update'] ) {
+			case 'with-front' :
+				$this->clear_front_cache();
+			case 'single' :
+				$this->clear_single_cache( $post );
+				break;
+			case 'all' :
+				$this->clear_all_cache();
+				break;
+			case 'none' :
+			default :
+		}
 	}
 }
 
@@ -195,6 +247,13 @@ function generate_advanced_cache_file() {
 
 		if ( file_exists( $this->advance_cache_tpl ) && is_readable( $this->advance_cache_tpl ) ) {
 			$advanced_cache_data = file_get_contents( $this->advance_cache_tpl );
+			
+			$device_regexes = '';
+			$regexes = get_option( 'sitemanager_device_rules', array() );
+			foreach ( $regexes as $group => $arr ) {
+				$regex = '/' . implode( '|', $arr['regex'] ) . '/';
+				$device_regexes .= "\t\t'" . $group . "' => '" . $regex . "',\n";
+			}
 
 			if ( is_multisite() ) {
 				$sql = "
@@ -219,21 +278,36 @@ ORDER BY `blog_id` ASC";
 						$sites_array .= "\t\t'" . $blog->$property . "' => '" . $blog->blog_id . "',\n";
 					}
 				}
+				if ( file_exists( $this->regex_include_tpl ) && is_readable( $this->regex_include_tpl ) ) {
+					$regex_include_file = WP_CONTENT_DIR . '/regex-include-' . get_current_blog_id() . '.php';
+					$regex_include_data = file_get_contents( $this->regex_include_tpl );
+					$replaces = array(
+						'### DEVICE REGEX ###' => $device_regexes,
+					);
+					$regex_include_data = str_replace( array_keys( $replaces ), $replaces, $regex_include_data );
+					@file_put_contents( $regex_include_file, $regex_include_data );
+					$regex_include = "
+		\$regex_include_file = dirname( __FILE__ ) . '/regex-include-' . \$site_id . '.php';
+		if ( file_exists( \$regex_include_file ) ) {
+			include( \$regex_include_file );
+		} else {
+			return;
+		}
+";
+		
+				}
+				$device_regexes = '';
 			} else {
 				$site_mode = 'false';
 				$sites_array = '';
+				$regex_include = '';
 			}
 
-			$device_regexes = '';
-			$regexes = get_option( 'sitemanager_device_rules', array() );
-			foreach ( $regexes as $group => $arr ) {
-				$regex = '/' . implode( '|', $arr['regex'] ) . '/';
-				$device_regexes .= "\t\t'" . $group . "' => '" . $regex . "',\n";
-			}
 			$replaces = array(
 				'### DEVICE REGEX ###' => $device_regexes,
 				'### SITES ARRAY ###' => $sites_array,
-				'### SITE MODE ###' => $site_mode
+				'### SITE MODE ###' => $site_mode,
+				'### REGEX INCLUDE ###' => $regex_include
 			);
 			$advanced_cache_data = str_replace( array_keys( $replaces ), $replaces, $advanced_cache_data );
 
@@ -277,6 +351,7 @@ function write_cache_file( $buffer ) {
 				break;
 			}
 		}
+		if ( $_COOKIE['site-view'] == 'PC' ) { $group = ''; }
 
 		$protocol = isset( $_SERVER['HTTPS'] ) && $_SERVER['HTTPS'] == 'on' ? 'https' : 'http';
 		$device_url = array(
@@ -364,10 +439,12 @@ WHERE	`hash` = '$hash'
 			$type = 'home';
 			$post_type = 'post';
 			$life_time_key = 'home';
+		} elseif ( is_single() ) {
+			$post_type = 'post';
+			$type = 'single';
+			$life_time_key = 'singular';
 		}
 		
-		$headers = 
-
 		$data = array(
 			'hash'        => $hash,
 			'content'     => $cache,

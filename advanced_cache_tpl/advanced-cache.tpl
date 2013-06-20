@@ -13,6 +13,7 @@ class SiteManagerAdvancedCache {
 
 	function __construct() {
 		global $table_prefix;
+
 		if ( $_SERVER['REQUEST_METHOD'] != 'GET' ) { return; }
 		foreach ( array_keys( $_COOKIE ) as $key ) {
 			if ( strpos( $key, 'wordpress_logged_in_' ) === 0 || strpos( $key, 'comment_author_' ) === 0 ) {
@@ -20,25 +21,28 @@ class SiteManagerAdvancedCache {
 			}
 		}
 
-		if ( ! $group = $this->get_device_group() ) {
+		if ( $_COOKIE['site-view'] == 'PC' || ! $group = $this->get_device_group() ) {
 			$group = '';
 		}
 
 		switch ( $this->site_mode ) {
 		case 'domain' :
 			$add_prefix = isset( $this->sites[$_SERVER['SERVER_NAME']] ) && $this->sites[$_SERVER['SERVER_NAME']] != 1 ? $this->sites[$_SERVER['SERVER_NAME']] . '_' : '';
+			$site_id = isset( $this->sites[$_SERVER['SERVER_NAME']] ) ? $this->sites[$_SERVER['SERVER_NAME']] : '';
 			$table = $table_prefix . $add_prefix;
 			break;
 			break;
 		case 'directory' :
 			$key = array_pop( explode( '/', trim( $_SERVER['REQUEST_URI'], '/' ), 2 ) );
 			$add_prefix = isset( $this->sites[$key] ) && $this->sites[$key] != 1 ? $this->sites[$key] . '_' : '';
+			$site_id = isset( $this->sites[$key] ) ? $this->sites[$key] : '';
 			$table = $table_prefix . $add_prefix;
 			break;
 		default :
 			$table = $table_prefix;
+			$site_id = '';
 		}
-
+### REGEX INCLUDE ###
 		$protocol = isset( $_SERVER['HTTPS'] ) && $_SERVER['HTTPS'] == 'on' ? 'https' : 'http';
 		$device_url = array(
 			$group,
@@ -57,7 +61,7 @@ class SiteManagerAdvancedCache {
 		);
 
 		if ( $dbh ) {
-			if ( function_exists( 'DB_CHARSET' ) ) {
+			if ( function_exists( 'mysql_set_charset' ) ) {
 				mysql_set_charset( DB_CHARSET, $dbh );
 			} else {
 				$sql = 'set names ' . DB_CHARSET;

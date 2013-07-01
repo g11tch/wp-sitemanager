@@ -188,13 +188,12 @@ WHERE	`type` = 'front'
 function clear_single_cache( $post ) {
 	global $wpdb;
 	$permalink = get_permalink( $post->ID );
-	var_dump( $permalink);
 	$permalink = parse_url( $permalink );
 	$device_url = '|' . $permalink['path'];
 	if ( isset( $permalink['query'] ) && $permalink['query'] ) {
 		$device_url .= '?' . $permalink['query'];
 	}
-	var_dump( $permalink, $device_url );
+
 	$sql = "
 DELETE
 FROM	`{$wpdb->prefix}site_cache`

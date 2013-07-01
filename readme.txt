@@ -33,6 +33,9 @@ In addition, it also makes possible snippet optimization through management of m
 2. Go to plugins list and activate "WP SiteManager". 
 
 == Changelog ==
+= 1.0.6 =
+* fix : debug message error.
+
 = 1.0.5 =
 * add : OGP and Twitter Cards.
 * add : Cache clear setting.

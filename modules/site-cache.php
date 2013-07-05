@@ -17,9 +17,17 @@ class WP_SiteManager_cache{
 	private $headers = array();
 
 function __construct( $parent ) {
+	global $cache_db, $wpdb, $table_prefix;
 	$this->advance_cache_tpl = plugin_dir_path( dirname( __FILE__ ) ) . 'advanced_cache_tpl/advanced-cache.tpl';
 	$this->regex_include_tpl = plugin_dir_path( dirname( __FILE__ ) ) . 'advanced_cache_tpl/regex_include.tpl';
 	$this->parent = $parent;
+	if ( defined( 'CACHE_DB_NAME' ) && defined( 'CACHE_DB_USER' ) && defined( 'CACHE_DB_PASSWORD' ) && defined( 'CACHE_DB_HOST' ) ) {
+		$cache_db = new wpdb( CACHE_DB_USER, CACHE_DB_PASSWORD, CACHE_DB_NAME, CACHE_DB_HOST );
+		$cache_db->set_prefix( $table_prefix );
+	} else {
+		$cache_db = $wpdb;
+	}
+
 	if ( is_admin() ) {
 		add_action( 'admin_menu'                                   , array( &$this, 'add_setting_menu' ) );
 		add_action( 'load-wp-sitemanager_page_wp-sitemanager-cache', array( &$this, 'update_cache_setting' ) );
@@ -34,9 +42,10 @@ function __construct( $parent ) {
 //		add_action( 'profile_update'                               , array( &$this, 'clear_all_cache' ) );
 	} else {
 		add_action( 'init'                                         , array( &$this, 'buffer_start' ) );
-		add_action( 'init'                                         , array( &$this, 'check_installed' ) );
+
 //		add_action( 'template_redirect'                            , array( &$this, 'check_vars' ) );
 	}
+	add_action( 'init'                                             , array( &$this, 'check_installed' ) );
 //	add_action( 'transition_comment_status'                        , array( &$this, 'transition_comment_status' ), 10, 3 );
 //	add_action( 'comment_post'                                     , array( &$this, 'new_comment' ), 10, 2 );
 }
@@ -48,11 +57,10 @@ function check_installed() {
 	}
 }
 function create_cache_table() {
-	global $wpdb;
-	
-	require_once( ABSPATH . 'wp-admin/includes/upgrade.php' );
+	global $cache_db;
+
 	$sql = "
-CREATE TABLE `{$wpdb->prefix}site_cache` (
+CREATE TABLE `{$cache_db->prefix}site_cache` (
  `hash` varchar(32) NOT NULL,
  `content` longtext NOT NULL,
  `device_url` text NOT NULL,
@@ -65,10 +73,11 @@ CREATE TABLE `{$wpdb->prefix}site_cache` (
  KEY `expire_time` (`expire_time`),
  KEY `type` (`type`,`post_type`)
 ) ENGINE=MyISAM DEFAULT CHARSET=utf8";
-	dbDelta( $sql, true );
-	
-	$sql = "SHOW TABLES FROM `{$wpdb->dbname}` LIKE '{$wpdb->prefix}site_cache'";
-	$table_exists = $wpdb->get_var( $sql );
+
+	$cache_db->query( $sql );
+
+	$sql = "SHOW TABLES FROM `{$cache_db->dbname}` LIKE '{$cache_db->prefix}site_cache'";
+	$table_exists = $cache_db->get_var( $sql );
 	if ( $table_exists ) {
 		update_option( 'site_manager_cache_installed', 1 );
 	}
@@ -147,10 +156,7 @@ function update_cache_setting() {
 			}
 			$settings[$key] = $minutes;
 		}
-		$return = update_option( 'site_cache_life', $settings );
-		if ( $return ) {
-			$this->clear_all_cache();
-		}
+		update_option( 'site_cache_life', $settings );
 	}
 }
 
@@ -168,25 +174,25 @@ function write_cache_file() {
 
 
 function clear_all_cache() {
-	global $wpdb;
-	$sql = "TRUNCATE TABLE `{$wpdb->prefix}site_cache`";
-	$wpdb->query( $sql );
+	global $cache_db;
+	$sql = "TRUNCATE TABLE `{$cache_db->prefix}site_cache`";
+	$cache_db->query( $sql );
 }
 
 
 function clear_front_cache() {
-	global $wpdb;
+	global $cache_db;
 	$sql = "
 DELETE
-FROM	`{$wpdb->prefix}site_cache`
+FROM	`{$cache_db->prefix}site_cache`
 WHERE	`type` = 'front'
 ";
-	$wpdb->query( $sql );
+	$cache_db->query( $sql );
 }
 
 
 function clear_single_cache( $post ) {
-	global $wpdb;
+	global $cache_db;
 	$permalink = get_permalink( $post->ID );
 	$permalink = parse_url( $permalink );
 	$device_url = '|' . $permalink['path'];
@@ -196,11 +202,11 @@ function clear_single_cache( $post ) {
 
 	$sql = "
 DELETE
-FROM	`{$wpdb->prefix}site_cache`
+FROM	`{$cache_db->prefix}site_cache`
 WHERE	`type` = 'single'
 AND		`device_url` LIKE '%$device_url%'
 ";
-	$wpdb->query( $sql );
+	$cache_db->query( $sql );
 }
 
 
@@ -319,7 +325,7 @@ ORDER BY `blog_id` ASC";
 $this->instance->$instanse = new WP_SiteManager_cache( $this );
 
 function write_cache_file( $buffer ) {
-	global $WP_SiteManager, $wpdb;
+	global $WP_SiteManager, $cache_db;
 
 	if ( $_SERVER['REQUEST_METHOD'] == 'GET' && ! is_404() && ! is_search() && ! is_user_logged_in() && ! is_admin() && preg_match( '#/index\.php$#', $_SERVER['SCRIPT_NAME'] )  && ! isset( $GLOBALS['http_response_code'] ) ) {
 		$life_time = get_option( 'site_cache_life', array( 'home' => 60, 'archive' => 60, 'singular' => 360 ) );
@@ -344,30 +350,58 @@ function write_cache_file( $buffer ) {
 
 		$group = '';
 		foreach ( $regexes as $current_group => $arr ) {
+			if ( isset( $_GET['site-view'] ) && strtolower( $_GET['site-view'] ) == strtolower( $_GET['site-view'] ) ) {
+				$group = $current_group;
+				break;
+			} elseif ( isset( $_COOKIE['site-view'] ) && strtolower( $_COOKIE['site-view'] ) == strtolower( $_COOKIE['site-view'] ) ) {
+				$group = $current_group;
+				break;
+			}
 			$regex = '/' . implode( '|', $arr['regex'] ) . '/';
 			if ( preg_match( $regex, $ua ) ) {
 				$group = $current_group;
 				break;
 			}
 		}
-		if ( $_COOKIE['site-view'] == 'PC' ) { $group = ''; }
+
+		if ( isset( $_GET['site-view'] ) ) {
+			if ( strtolower( $_GET['site-view'] ) == 'pc' ) {
+				$group = '';
+			}
+			foreach ( $regexes as $current_group => $arr ) {
+				if ( strtolower( $_GET['site-view'] ) == strtolower( $current_group ) ) {
+					$group = $current_group;
+					break;
+				}
+			}
+		} elseif ( isset( $_COOKIE['site-view'] ) ) {
+			if ( strtolower( $_COOKIE['site-view'] ) == 'pc' ) {
+				$group = '';
+			}
+			foreach ( $regexes as $current_group => $arr ) {
+				if ( strtolower( $_COOKIE['site-view'] ) == strtolower( $current_group ) ) {
+					$group = $current_group;
+					break;
+				}
+			}
+		}
 
 		$protocol = isset( $_SERVER['HTTPS'] ) && $_SERVER['HTTPS'] == 'on' ? 'https' : 'http';
 		$device_url = array(
 			$group,
 			$protocol,
 			$_SERVER['SERVER_NAME'],
-			$_SERVER['REQUEST_URI']
+			remove_query_arg( 'site-view', $_SERVER['REQUEST_URI'] )
 		);
 		$device_url = implode( '|', $device_url );
 		$hash = md5( $device_url );
 		$sql = "
 SELECT	*
-FROM	{$wpdb->prefix}site_cache
+FROM	{$cache_db->prefix}site_cache
 WHERE	`hash` = '$hash'
 ";
 		$row = false;
-		$rows = $wpdb->get_results( $sql );
+		$rows = $cache_db->get_results( $sql );
 		if ( $rows ) {
 			foreach ( $rows as $r ) {
 				if ( $r->device_url == $device_url ) {
@@ -456,11 +490,11 @@ WHERE	`hash` = '$hash'
 		);
 
 		if ( ! $row ) {
-			$wpdb->insert( $wpdb->prefix . 'site_cache', $data );
+			$cache_db->insert( $cache_db->prefix . 'site_cache', $data );
 		} elseif ( $row->expire_time < date( 'Y-m-d H:i:s' ) ) {
-			$wpdb->update( $wpdb->prefix . 'site_cache', $data, array( 'hash' => $hash ) );
-		} elseif ( strpos( $row->content, '<!-- page cached by WP SiteManager -->' ) === false ) {
-			$wpdb->update( $wpdb->prefix . 'site_cache', $data, array( 'hash' => $hash ) );
+			$cache_db->update( $cache_db->prefix . 'site_cache', $data, array( 'hash' => $hash ) );
+		} elseif ( strpos( $cache_db->content, '<!-- page cached by WP SiteManager -->' ) === false ) {
+			$cache_db->update( $cache_db->prefix . 'site_cache', $data, array( 'hash' => $hash ) );
 		}
 	}
 	return $buffer;

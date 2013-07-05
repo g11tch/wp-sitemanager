@@ -253,9 +253,11 @@ INSERT INTO `{$this->device_table}` (`device_id`, `device_name`, `keyword`, `bui
 (3, 'iPod', '\\\(iPod', 0),
 (4, 'Android', ' Android .+ Mobile ', 0),
 (5, 'Android Tablet', ' Android ', 0),
-(6, 'IEMobile', 'IEMobile/', 0),
-(7, 'Windows Phone', 'Windows Phone', 0)";
-			dbDelta( $sql, true );
+(6, 'IEMobile', 'IEMobile', 0),
+(7, 'Windows Phone', 'Windows Phone', 0),
+(8, 'Firefox Mobile', 'Android\; Mobile\; .+Firefox', 0),
+(9, 'Firefox Tablet', 'Android\; Tablet\; .+Firefox', 0)";
+			$wpdb->query( $sql );
 		}
 		
 		$sql = "SHOW TABLES FROM `{$wpdb->dbname}` LIKE '{$this->group_table}'";
@@ -278,7 +280,7 @@ CREATE TABLE `{$this->group_table}` (
 INSERT INTO `{$this->group_table}` (`group_id`, `group_name`, `theme`, `slug`, `priority`, `builtin`) VALUES
 (1, 'タブレット', '', 'tablet', 200, '0'),
 (2, 'スマートフォン', '', 'smart', 100, '0')";
-			dbDelta( $sql, true );
+			$wpdb->query( $sql );
 		}
 
 		$sql = "SHOW TABLES FROM `{$wpdb->dbname}` LIKE '{$this->relation_table}'";
@@ -301,8 +303,10 @@ INSERT INTO `{$this->relation_table}` (`group_id`, `device_id`) VALUES
 (2, 3),
 (2, 4),
 (2, 6),
-(2, 7)";
-			dbDelta( $sql, true );
+(2, 7),
+(1, 9),
+(2, 8)";
+			$wpdb->query( $sql );
 		}
 	}
 
@@ -491,9 +495,6 @@ endif;
 
 
 	public function switch_theme() {
-//		$_SERVER['HTTP_USER_AGENT'] = 'Mozilla/5.0 (Linux; U; Android 3.2; ja-jp; SC-01D Build/MASTER) AppleWebKit/534.13 (KHTML, like Gecko) Version/4.0';
-//		echo $_SERVER['HTTP_USER_AGENT'] . '<br />';
-//		var_dump( $this->detect_device_template() );
 		if ( $this->detect_device_template() !== false ) {
 			add_filter( 'template'  , array( &$this, 'switch_template' ) );
 			add_filter( 'stylesheet', array( &$this, 'switch_stylesheet' ) );
@@ -503,7 +504,39 @@ endif;
 
 	private function detect_device_template() {
 		$ua = $_SERVER['HTTP_USER_AGENT'];
+		$path = preg_replace( '#^' . $_SERVER['DOCUMENT_ROOT'] . '#', '', str_replace( '\\', '/', ABSPATH ) );
+
 		$regexes = get_option( 'sitemanager_device_rules', array() );
+
+		if ( isset( $_GET['site-view'] ) ) {
+			if ( strtolower( $_GET['site-view'] ) == 'pc' ) {
+				setcookie( 'site-view', 'pc', 0, $path );
+				$this->device_theme = false;
+				return false;
+			}
+			foreach ( $regexes as $this->current_group => $arr ) {
+				if ( strtolower( $_GET['site-view'] ) == strtolower( $this->current_group ) ) {
+					setcookie( 'site-view', $this->current_group, 0, $path );
+					$this->device_theme = $arr['theme'];
+					return $this->current_group;
+				}
+			}
+		}
+
+		if ( isset( $_COOKIE['site-view'] ) ) {
+			if ( strtolower( $_COOKIE['site-view'] ) == 'pc' ) {
+				setcookie( 'site-view', 'pc', 0, $path );
+				$this->device_theme = false;
+				return false;
+			}
+			foreach ( $regexes as $this->current_group => $arr ) {
+				if ( strtolower( $_COOKIE['site-view'] ) == strtolower( $this->current_group ) ) {
+					setcookie( 'site-view', $this->current_group, 0, $path  );
+					$this->device_theme = $arr['theme'];
+					return $this->current_group;
+				}
+			}
+		}
 
 		foreach ( $regexes as $this->current_group => $arr ) {
 			$regex = '/' . implode( '|', $arr['regex'] ) . '/';

@@ -21,7 +21,7 @@ class SiteManagerAdvancedCache {
 			}
 		}
 
-		if ( $_COOKIE['site-view'] == 'PC' || ! $group = $this->get_device_group() ) {
+		if ( ! $group = $this->get_device_group() ) {
 			$group = '';
 		}
 
@@ -44,19 +44,47 @@ class SiteManagerAdvancedCache {
 		}
 ### REGEX INCLUDE ###
 		$protocol = isset( $_SERVER['HTTPS'] ) && $_SERVER['HTTPS'] == 'on' ? 'https' : 'http';
+
+		$request = parse_url( $_SERVER['REQUEST_URI'] );
+		$request['query'] = preg_replace( '/&?site-view=[^&]*/', '', $request['query'] );
+		$request['query'] = rtrim( $request['query'], '&' );
+		if ( $request['query'] ) {
+			$request = $request['path'] . '?' . $request['query'];
+		} else {
+			$request = $request['path'];
+		}
+
 		$device_url = array(
 			$group,
 			$protocol,
 			$_SERVER['SERVER_NAME'],
-			$_SERVER['REQUEST_URI']
+			$request
 		);
 		$device_url = implode( '|', $device_url );
 		$hash = md5( $device_url );
 
+		if ( defined( 'CACHE_DB_NAME' ) && defined( 'CACHE_DB_USER' ) && defined( 'CACHE_DB_PASSWORD' ) && defined( 'CACHE_DB_HOST' ) ) {
+			$dbset = array(
+				'host' => CACHE_DB_HOST,
+				'user' => CACHE_DB_USER,
+				'pass' => CACHE_DB_PASSWORD,
+				'name' => CACHE_DB_NAME
+				
+			);
+		} else {
+			$dbset = array(
+				'host' => DB_HOST,
+				'user' => DB_USER,
+				'pass' => DB_PASSWORD,
+				'name' => DB_NAME
+				
+			);
+		}
+
 		$dbh = mysql_connect( 
-			DB_HOST,
-			DB_USER,
-			DB_PASSWORD,
+			$dbset['host'],
+			$dbset['user'],
+			$dbset['pass'],
 			true
 		);
 
@@ -67,7 +95,7 @@ class SiteManagerAdvancedCache {
 				$sql = 'set names ' . DB_CHARSET;
 				mysql_query( $sql, $dbh );
 			}
-			mysql_select_db( DB_NAME, $dbh );
+			mysql_select_db( $dbset['name'], $dbh );
 			$now = date( 'Y-m-d H:i:s' );
 			$sql = "
 SELECT	*
@@ -97,6 +125,32 @@ AND		`expire_time` >= '$now'
 	
 	
 	function get_device_group() {
+		$path = preg_replace( '#^' . $_SERVER['DOCUMENT_ROOT'] . '#', '', str_replace( '\\', '/', ABSPATH ) );
+
+		if ( isset( $_GET['site-view'] ) ) {
+			if ( strtolower( $_GET['site-view'] ) == 'pc' ) {
+				setcookie( 'site-view', 'pc', 0, $path );
+				return false;
+			}
+			foreach ( $this->device_regexes as $group => $regex ) {
+				if ( strtolower( $_GET['site-view'] ) == strtolower( $group ) ) {
+					setcookie( 'site-view', $group, 0, $path );
+					return $group;
+				}
+			}
+		} elseif ( isset( $_COOKIE['site-view'] ) ) {
+			if ( strtolower( $_COOKIE['site-view'] ) == 'pc' ) {
+				setcookie( 'site-view', 'pc', 0, $path );
+				return false;
+			}
+			foreach ( $this->device_regexes as $group => $regex ) {
+				if ( strtolower( $_COOKIE['site-view'] ) == strtolower( $group ) ) {
+					setcookie( 'site-view', $group, 0, $path );
+					return $group;
+				}
+			}
+		}
+
 		foreach ( $this->device_regexes as $group => $regex ) {
 			if ( preg_match( $regex, $_SERVER['HTTP_USER_AGENT'] ) ) {
 				return $group;

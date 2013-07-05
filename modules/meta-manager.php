@@ -248,7 +248,7 @@ private function get_post_meta() {
 		if ( trim( $post->post_excerpt ) ) {
 			$post_meta['description'] = $post->post_excerpt;
 		} else {
-			$excerpt = apply_filters( 'the_content', $post->post_content );
+			$excerpt = apply_filters( 'the_content', strip_shortcodes( $post->post_content ) );
 			$excerpt = strip_shortcodes( $excerpt );
 			$excerpt = str_replace( ']]>', ']]&gt;', $excerpt );
 			$excerpt = strip_tags( $excerpt );

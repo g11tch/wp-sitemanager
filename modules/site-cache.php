@@ -54,6 +54,8 @@ function check_installed() {
 	if ( ! get_option( 'site_manager_cache_installed' ) ) {
 		$this->create_cache_table();
 		$this->generate_advanced_cache_file();
+	} elseif ( get_option( 'site_manager_cache_installed' ) < 2 ) {
+		$this->update_cache_table( 2 );
 	}
 }
 function create_cache_table() {
@@ -83,17 +85,46 @@ CREATE TABLE `{$cache_db->prefix}site_cache` (
 	}
 }
 
+
+private function update_cache_table( $db_version ) {
+	global $cache_db;
+	switch ( $db_version ) {
+		case 2 :
+			$sql = "
+ALTER TABLE `{$cache_db->prefix}site_cache`
+ADD			`user_agent` TEXT NOT NULL AFTER `headers` ,
+ADD			`server` VARCHAR( 16 ) NOT NULL AFTER `user_agent`";
+			$cache_db->query( $sql );
+			update_option( 'site_manager_cache_installed', 2 );
+			break;
+		default :
+	}
+}
+
+
 function add_setting_menu() {
 	add_submenu_page( $this->parent->root, 'キャッシュ', 'キャッシュ', 'administrator', basename( $this->parent->root ) . '-cache', array( &$this, 'cache_setting_page' ) );
 }
 
 function cache_setting_page() {
-	$life_time = get_option( 'site_cache_life', array( 'home' => 60, 'archive' => 60, 'singular' => 360, 'exclude' => '', 'update' => 'none' ) );
+	$life_time = get_option( 'site_cache_life', array( 'home' => 60, 'archive' => 60, 'singular' => 360, 'exclude' => '', 'allowed_query_keys' => '', 'update' => 'none' ) );
 	$clear_link = add_query_arg( array( 'del_cache' => '1' ) );
+	$advanced_cache_link = add_query_arg( array( 'generate_advanced_cache' => '1' ) );
+	$advanced_check = $this->check_advanced_cache_file();
 ?>
 <div class="wrap">
 <h2>キャッシュ設定</h2>
 <h3>キャッシュの有効期限</h3>
+<?php if ( ! ( defined( 'WP_CACHE' ) && WP_CACHE ) ) : ?>
+<div class="updated"> 
+<p>キャッシュは有効になっていません。有効にするためには、wp-config.phpの「編集が必要なのはここまでです !…」という記述より上に<code>define( 'WP_CACHE', true );</code>と記述する必要があります。</p>
+</div> 
+<?php endif; ?>
+<?php if ( is_wp_error( $advanced_check ) ) : ?>
+<div class="updated"> 
+<p><?php echo $advanced_check->get_error_message( 'cache-file-error' ); ?></p>
+</div> 
+<?php endif; ?>
 <form method="post" action="">
 	<?php wp_nonce_field( 'site-cache-settings' ); ?>
 	<table class="form-table">
@@ -119,7 +150,14 @@ function cache_setting_page() {
 			<th>キャッシュ除外URL</th>
 			<td>
 				<textarea cols="70" rows="5" name="site_cache_life[exclude]"><?php echo esc_html( $life_time['exclude'] ); ?></textarea>
-				<br />キャッシュを除外したい、URLパターン（正規表現利用可）を指定できます。複数のパターンを指定する場合は、改行を入れてください。
+				<p class="description">キャッシュを除外したい、URLパターン（正規表現利用可）を指定できます。複数のパターンを指定する場合は、改行を入れてください。</p>
+			</td>
+		</tr>
+		<tr>
+			<th>キャッシュするクエリ文字列</th>
+			<td>
+				<textarea cols="10" rows="5" name="site_cache_life[allowed_query_keys]"><?php echo esc_html( $life_time['allowed_query_keys'] ); ?></textarea>
+				<p class="description">キャッシュデータとして有効なクエリ文字列のキーを入力してください。</p>
 			</td>
 		</tr>
 	</table>
@@ -132,16 +170,35 @@ function cache_setting_page() {
 	</select>
 		<?php submit_button( NULL, 'primary', 'site-cache-settings' ); ?>
 </form>
+<?php if ( apply_filters( 'allow_sitemanager_cache_clear', true ) ) : ?>
 <h3>キャッシュのクリア</h3>
 	<a href="<?php echo $clear_link; ?>" class="button">キャッシュを全てクリア</a>
 </div>
+<?php endif; ?>
+
+<?php if ( apply_filters( 'allow_generate_advanced_cache', true ) ) : ?>
+<h3>advanced-cache.phpの再生成</h3>
+<?php if ( $this->is_writable_advanced_cache_file() ) : ?>
+	<a href="<?php echo $advanced_cache_link; ?>" class="button">advanced-cache.phpを生成する</a>
+<?php else : ?>
+	<p>advanced-cache.php、または <?php echo basename( WP_CONTENT_DIR ); ?> に書き込み権限がありません。advanced-cache.phpの再生成を行うには、書き込み権限を設定してください。</p>
+<?php endif; ?>
+</div>
+<?php endif; ?>
+
 <?php
 }
 
 function update_cache_setting() {
-	if ( isset( $_GET['del_cache'] ) && $_GET['del_cache'] == '1' ) {
+	if ( isset( $_GET['del_cache'] ) && $_GET['del_cache'] == '1' && apply_filters( 'allow_sitemanager_cache_clear', true ) ) {
 		$this->clear_all_cache();
 		$redirect = remove_query_arg( 'del_cache' );
+		wp_redirect( $redirect );
+		exit;
+	}
+	if ( isset( $_GET['generate_advanced_cache'] ) && $_GET['generate_advanced_cache'] == '1' && apply_filters( 'allow_generate_advanced_cache', true ) ) {
+		$this->generate_advanced_cache_file();
+		$redirect = remove_query_arg( 'generate_advanced_cache' );
 		wp_redirect( $redirect );
 		exit;
 	}
@@ -149,7 +206,7 @@ function update_cache_setting() {
 		check_admin_referer( 'site-cache-settings' );
 		$settings = array();
 		foreach ( $_POST['site_cache_life'] as $key => $minutes ) {
-			if ( function_exists( 'mb_convert_kana' ) && ! in_array( $key, array( 'exclude', 'update' ) ) ) {
+			if ( function_exists( 'mb_convert_kana' ) && ! in_array( $key, array( 'exclude', 'allowed_query_keys', 'update' ) ) ) {
 				$minutes = mb_convert_kana( $minutes, 'n', 'UTF-8' );
 				$minutes = preg_replace( '/[\D]/', '', $minutes );
 				$minutes = absint( $minutes );
@@ -158,6 +215,38 @@ function update_cache_setting() {
 		}
 		update_option( 'site_cache_life', $settings );
 	}
+}
+
+
+function is_writable_advanced_cache_file() {
+	$writable = false;
+	if ( file_exists( WP_CONTENT_DIR . '/advanced-cache.php' ) ) {
+		if ( is_writable( WP_CONTENT_DIR . '/advanced-cache.php' ) ) {
+			$writable = true;
+		}
+	} else {
+		if ( is_writable( WP_CONTENT_DIR ) ) {
+			$writable = true;
+		}
+	}
+	return $writable;
+}
+
+
+function check_advanced_cache_file() {
+	if ( file_exists( WP_CONTENT_DIR . '/advanced-cache.php' ) ) {
+		if ( is_readable( WP_CONTENT_DIR . '/advanced-cache.php' ) ) {
+			$file_content = file_get_contents( WP_CONTENT_DIR . '/advanced-cache.php' );
+			if ( strpos( $file_content, 'class SiteManagerAdvancedCache {' ) === false ) {
+				return new WP_Error( 'cache-file-error', 'advanced-cache.phpは存在していますが、WP SiteManagerのものとは異なっています。' );
+			}
+		} else {
+			return new WP_Error( 'cache-file-error', 'advanced-cache.phpに読み込み権限がありません。' );
+		}
+	} else {
+		return new WP_Error( 'cache-file-error', 'advanced-cache.phpが存在していません。' );
+	}
+	return true;
 }
 
 function check_vars() {
@@ -193,18 +282,36 @@ WHERE	`type` = 'front'
 
 function clear_single_cache( $post ) {
 	global $cache_db;
+	
+	$regexes = get_option( 'sitemanager_device_rules', array() );
+	$groups = array_keys( $regexes );
+	$groups = array_merge( array( '' ), $groups );
+
 	$permalink = get_permalink( $post->ID );
 	$permalink = parse_url( $permalink );
-	$device_url = '|' . $permalink['path'];
+	$path = $permalink['path'];
 	if ( isset( $permalink['query'] ) && $permalink['query'] ) {
-		$device_url .= '?' . $permalink['query'];
+		$path .= '?' . $permalink['query'];
 	}
+
+	$hashes = array();
+	foreach ( $groups as $group ) {
+		$device_url = array(
+			$group,
+			$permalink['scheme'],
+			$permalink['host'],
+			$path
+		);
+		$device_url = implode( '|', $device_url );
+		$hashes[] = md5( $device_url );
+	}
+	$hashes = implode( "', '", $hashes );
 
 	$sql = "
 DELETE
 FROM	`{$cache_db->prefix}site_cache`
 WHERE	`type` = 'single'
-AND		`device_url` LIKE '%$device_url%'
+AND		`hash` IN ( '{$hashes}' )
 ";
 	$cache_db->query( $sql );
 }
@@ -244,13 +351,14 @@ function new_comment( $comment_ID, $approved ) {
 
 
 function generate_advanced_cache_file() {
-	global $wpdb;
+	global $wpdb, $wp;
 
 	$advanced_cache_file = WP_CONTENT_DIR . '/advanced-cache.php';
 
 	if ( file_exists( $advanced_cache_file ) && is_writable( $advanced_cache_file ) || is_writable( WP_CONTENT_DIR ) ) {
 
 		if ( file_exists( $this->advance_cache_tpl ) && is_readable( $this->advance_cache_tpl ) ) {
+			$life_time = get_option( 'site_cache_life', array( 'home' => 60, 'archive' => 60, 'singular' => 360, 'exclude' => '', 'allowed_query_keys' => '', 'update' => 'none' ) );
 			$advanced_cache_data = file_get_contents( $this->advance_cache_tpl );
 			
 			$device_regexes = '';
@@ -259,6 +367,11 @@ function generate_advanced_cache_file() {
 				$regex = '/' . implode( '|', $arr['regex'] ) . '/';
 				$device_regexes .= "\t\t'" . $group . "' => '" . $regex . "',\n";
 			}
+			
+			$allowed_query_keys = trim( $life_time['allowed_query_keys'] );
+			$allowed_query_keys = preg_split( '/[\s]+/', $allowed_query_keys );
+			$allowed_query_keys = array_unique( array_merge( $wp->public_query_vars, $allowed_query_keys ) );
+			$allowed_query_keys = "'" . implode( "','", $allowed_query_keys ) . "'";
 
 			if ( is_multisite() ) {
 				$sql = "
@@ -288,6 +401,7 @@ ORDER BY `blog_id` ASC";
 					$regex_include_data = file_get_contents( $this->regex_include_tpl );
 					$replaces = array(
 						'### DEVICE REGEX ###' => $device_regexes,
+						'### QUERY KEYS ###' => $allowed_query_keys
 					);
 					$regex_include_data = str_replace( array_keys( $replaces ), $replaces, $regex_include_data );
 					@file_put_contents( $regex_include_file, $regex_include_data );
@@ -302,17 +416,20 @@ ORDER BY `blog_id` ASC";
 		
 				}
 				$device_regexes = '';
+				$allowed_query_keys = '';
 			} else {
 				$site_mode = 'false';
 				$sites_array = '';
 				$regex_include = '';
+				$allowed_query_keys = '$this->allowed_query_keys = array( ' . $allowed_query_keys . ' );';
 			}
 
 			$replaces = array(
 				'### DEVICE REGEX ###' => $device_regexes,
 				'### SITES ARRAY ###' => $sites_array,
 				'### SITE MODE ###' => $site_mode,
-				'### REGEX INCLUDE ###' => $regex_include
+				'### REGEX INCLUDE ###' => $regex_include,
+				'### QUERY KEYS ###' => $allowed_query_keys,
 			);
 			$advanced_cache_data = str_replace( array_keys( $replaces ), $replaces, $advanced_cache_data );
 
@@ -325,10 +442,15 @@ ORDER BY `blog_id` ASC";
 $this->instance->$instanse = new WP_SiteManager_cache( $this );
 
 function write_cache_file( $buffer ) {
-	global $WP_SiteManager, $cache_db;
+	global $WP_SiteManager, $cache_db, $wp;
 
+	foreach ( array_keys( $_COOKIE ) as $key ) {
+		if ( strpos( $key, 'comment_author_' ) === 0 ) {
+			return $buffer;
+		}
+	}
 	if ( $_SERVER['REQUEST_METHOD'] == 'GET' && ! is_404() && ! is_search() && ! is_user_logged_in() && ! is_admin() && preg_match( '#/index\.php$#', $_SERVER['SCRIPT_NAME'] )  && ! isset( $GLOBALS['http_response_code'] ) ) {
-		$life_time = get_option( 'site_cache_life', array( 'home' => 60, 'archive' => 60, 'singular' => 360 ) );
+		$life_time = get_option( 'site_cache_life', array( 'home' => 60, 'archive' => 60, 'singular' => 360, 'exclude' => '', 'allowed_query_keys' => '', 'update' => 'none' ) );
 		
 		if ( $life_time['exclude'] ) {
 			$rules = explode( "\n", $life_time['exclude'] );
@@ -385,13 +507,34 @@ function write_cache_file( $buffer ) {
 				}
 			}
 		}
-
+		$requerst_query = '';
 		$protocol = isset( $_SERVER['HTTPS'] ) && $_SERVER['HTTPS'] == 'on' ? 'https' : 'http';
+		$request_uri = parse_url( $_SERVER['REQUEST_URI'] );
+		if ( isset( $request_uri['query'] ) ) {
+			parse_str( $request_uri['query'], $requerst_query );
+			
+			$allowed_query_keys = trim( $life_time['allowed_query_keys'] );
+			$allowed_query_keys = preg_split( '/[\s]+/', $allowed_query_keys );
+	
+			foreach ( $requerst_query as $key => $var ) {
+				if ( ! in_array( $key, array_unique( array_merge( $wp->public_query_vars, $allowed_query_keys ) ) ) ) {
+					unset( $requerst_query[$key] );
+				}
+			}
+			ksort( $requerst_query );
+			$requerst_query = http_build_query( $requerst_query );
+		}
+
+		$request_uri = $request_uri['path'];
+		if ( $requerst_query ) {
+			$request_uri .= '?' . $requerst_query;
+		}
+
 		$device_url = array(
 			$group,
 			$protocol,
 			$_SERVER['SERVER_NAME'],
-			remove_query_arg( 'site-view', $_SERVER['REQUEST_URI'] )
+			$request_uri
 		);
 		$device_url = implode( '|', $device_url );
 		$hash = md5( $device_url );
@@ -418,7 +561,9 @@ WHERE	`hash` = '$hash'
 			if ( $key == 'Vary' && strpos( $val, 'Cookie' ) === false ) {
 				$val .= ',Cookie';
 			}
-			$header_arr[$key] = $val;
+			if ( $key != 'Set-Cookie' ) {
+				$header_arr[$key] = $val;
+			}
 		}
 		$header_arr['X-Static-Cached-By'] = 'WP SiteManager';
 		
@@ -478,6 +623,9 @@ WHERE	`hash` = '$hash'
 			$life_time_key = 'singular';
 		}
 		
+		$expire = apply_filters( 'site_cache_expire_time', $life_time[$life_time_key] * 60, $life_time_key );
+		
+		$server = defined( 'CACHE_SERVER' ) ? CACHE_SERVER : '';
 		$data = array(
 			'hash'        => $hash,
 			'content'     => $cache,
@@ -485,8 +633,10 @@ WHERE	`hash` = '$hash'
 			'type'        => $type,
 			'post_type'   => $post_type,
 			'headers'     => serialize( $header_arr ),
+			'user_agent'  => $_SERVER['HTTP_USER_AGENT'],
+			'server'      => $server,
 			'create_time' => date( 'Y-m-d H:i:s' ),
-			'expire_time' => date( 'Y-m-d H:i:s', time() + $life_time[$life_time_key] * 60 ),
+			'expire_time' => date( 'Y-m-d H:i:s', time() + $expire ),
 		);
 
 		if ( ! $row ) {

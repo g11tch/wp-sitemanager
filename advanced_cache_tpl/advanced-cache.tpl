@@ -8,19 +8,30 @@ class SiteManagerAdvancedCache {
 	private $sites = array(
 ### SITES ARRAY ###
 	);
-
+	private $allowed_query_keys;
 	private $site_mode = ### SITE MODE ###;
 
 	function __construct() {
 		global $table_prefix;
-
+		
 		if ( $_SERVER['REQUEST_METHOD'] != 'GET' ) { return; }
+		if ( defined( 'CACHE_EXCLUDE_IP' ) ) {
+			$exclude_ips = explode( '|', CACHE_EXCLUDE_IP );
+			foreach ( $exclude_ips as $exclude_ip ) {
+				if ( $_SERVER['REMOTE_ADDR'] == $exclude_ip || preg_match( '/' . preg_quote( $exclude_ip ) . '/', $_SERVER['REMOTE_ADDR'] ) ) {
+					return;
+				}
+			}
+		}
+		if ( defined( 'CACHE_EXCLUDE_GET' ) && isset( $_GET[CACHE_EXCLUDE_GET] ) ) {
+			return;
+		}
 		foreach ( array_keys( $_COOKIE ) as $key ) {
 			if ( strpos( $key, 'wordpress_logged_in_' ) === 0 || strpos( $key, 'comment_author_' ) === 0 ) {
 				return;
 			}
 		}
-
+		### QUERY KEYS ###
 		if ( ! $group = $this->get_device_group() ) {
 			$group = '';
 		}
@@ -45,20 +56,31 @@ class SiteManagerAdvancedCache {
 ### REGEX INCLUDE ###
 		$protocol = isset( $_SERVER['HTTPS'] ) && $_SERVER['HTTPS'] == 'on' ? 'https' : 'http';
 
-		$request = parse_url( $_SERVER['REQUEST_URI'] );
-		$request['query'] = preg_replace( '/&?site-view=[^&]*/', '', $request['query'] );
-		$request['query'] = rtrim( $request['query'], '&' );
-		if ( $request['query'] ) {
-			$request = $request['path'] . '?' . $request['query'];
+		$requerst_query = '';
+		$request_uri = parse_url( $_SERVER['REQUEST_URI'] );
+		if ( isset( $request_uri['query'] ) ) {
+			parse_str( $request_uri['query'], $requerst_query );
+
+			foreach ( $requerst_query as $key => $var ) {
+				if ( ! in_array( $key, $this->allowed_query_keys ) ) {
+					unset( $requerst_query[$key] );
+				}
+			}
+			ksort( $requerst_query );
+			$requerst_query = http_build_query( $requerst_query );
+		}
+
+		if ( $requerst_query ) {
+			$request_uri = $request_uri['path'] . '?' . $requerst_query;
 		} else {
-			$request = $request['path'];
+			$request_uri = $request_uri['path'];
 		}
 
 		$device_url = array(
 			$group,
 			$protocol,
 			$_SERVER['SERVER_NAME'],
-			$request
+			$request_uri
 		);
 		$device_url = implode( '|', $device_url );
 		$hash = md5( $device_url );

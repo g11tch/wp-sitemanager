@@ -2,8 +2,8 @@
 Contributors: primestrategy, jim912
 Tags: cms, mobile, sitemap, pager, page navi, breadcrumb
 Requires at least: 3.3
-Tested up to: 3.6-RC2
-Stable tag: 1.0.9
+Tested up to: 3.6
+Stable tag: 1.0.10
 
 WP SiteManager is an integrated package comprising of necessary functions for using WordPress as a CMS.
 
@@ -33,6 +33,9 @@ In addition, it also makes possible snippet optimization through management of m
 2. Go to plugins list and activate "WP SiteManager". 
 
 == Changelog ==
+= 1.0.10 =
+* fix : theme_switcher.php Compilation failed Warning error.
+
 = 1.0.9 =
 * add : allow cache params setting.
 * add : re-generate advanced-cache.php button.

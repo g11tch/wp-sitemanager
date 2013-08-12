@@ -147,7 +147,7 @@ AND		`expire_time` >= '$now'
 	
 	
 	function get_device_group() {
-		$path = preg_replace( '#^' . $_SERVER['DOCUMENT_ROOT'] . '#', '', str_replace( '\\', '/', ABSPATH ) );
+		$path = preg_replace( '#^' . str_replace( '\\', '/', $_SERVER['DOCUMENT_ROOT'] ) . '#', '', str_replace( '\\', '/', ABSPATH ) );
 
 		if ( isset( $_GET['site-view'] ) ) {
 			if ( strtolower( $_GET['site-view'] ) == 'pc' ) {

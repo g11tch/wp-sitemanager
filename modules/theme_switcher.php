@@ -504,7 +504,7 @@ endif;
 
 	private function detect_device_template() {
 		$ua = $_SERVER['HTTP_USER_AGENT'];
-		$path = preg_replace( '#^' . $_SERVER['DOCUMENT_ROOT'] . '#', '', str_replace( '\\', '/', ABSPATH ) );
+		$path = preg_replace( '#^' . str_replace( '\\', '/', $_SERVER['DOCUMENT_ROOT'] ) . '#', '', str_replace( '\\', '/', ABSPATH ) );
 
 		$regexes = get_option( 'sitemanager_device_rules', array() );
 

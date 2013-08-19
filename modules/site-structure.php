@@ -7,7 +7,7 @@
  * Major Changes In:	
  * Builtin:				true
  * Free:				true
- * Module Version:		1.0.1
+ * Module Version:		1.0.2
  * License:				GPLv2 or later
 */
 
@@ -43,6 +43,8 @@ class site_structure {
 			add_action( 'wp_loaded'						, array( &$this, 'taxonomy_update_hooks' ), 9999 );
 			
 			add_action( 'admin_print_styles-wp-sitemanager_page_wp-sitemanager-structure', array( &$this->parent, 'print_icon_style' ) );
+			
+			add_filter( 'iis7_supports_permalinks'      , array( &$this, 'disallow_rewrite_web_config' ) );
 		} else {
 			add_action( 'wp'							, array( &$this, 'enqueue_sitemap_style' ) );
 		}
@@ -454,6 +456,22 @@ AND			`meta_value` = '1'
 		if ( is_singular() && strpos( $post->post_content, '[sitemap]' ) !== false && isset( $this->settings['sitemap']['style']['path'] ) && file_exists( $this->settings['sitemap']['style']['path'] ) ) {
 			wp_enqueue_style( 'sitemap-style', $this->settings['sitemap']['style']['url'], array(), $this->settings['sitemap']['style']['version'] );
 		}
+	}
+	
+	
+	/*
+	 * location の記述があるweb.cofig ファイルの書き換えを禁止する
+	 */
+	public function disallow_rewrite_web_config( $supports_permalinks ) {
+		$home_path = get_home_path();
+		$web_config_file = $home_path . 'web.config';
+		if ( $supports_permalinks && file_exists( $web_config_file ) && is_readable( $web_config_file ) ) {
+			$web_config_contents = file_get_contents( $web_config_file );
+			if ( preg_match( '/<location[\s]+inheritInChildApplications="false"[\s]*>/i', $web_config_contents ) ) {
+				$supports_permalinks = false;
+			}
+		}
+		return $supports_permalinks;
 	}
 } // class end
 $this->instance->$slug = new site_structure( $this );

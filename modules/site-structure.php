@@ -763,13 +763,14 @@ class Walker_pageNavi extends Walker_Page {
 		 return $output;
 	}
 
-	function start_lvl( &$output, $depth ) {
+
+		function start_lvl( &$output, $depth = 0, $args = array() ) {
 		$indent = str_repeat( "\t", $depth );
 		$output .= "\n$indent<ul class=\"children\">\n";
 	}
 
 
-	function start_el( &$output, $page, $depth, $args, $current_page = 0 ) {
+	function start_el( &$output, $page, $depth = 0, $args = array(), $current_page = 0 ) {
 		if ( $depth )
 			$indent = str_repeat("\t", $depth);
 		else
@@ -945,7 +946,8 @@ class Walk_categoryNavi extends Walker_Category {
 		$this->root_depth = $depth;
 	}
 
-	function start_el(&$output, $category, $depth, $args) {
+
+	function start_el( &$output, $category, $depth = 0, $args = array(), $id = 0 ) {
 		$current_depth = $depth;
 		extract($args);
 

@@ -173,7 +173,6 @@ function cache_setting_page() {
 <?php if ( apply_filters( 'allow_sitemanager_cache_clear', true ) ) : ?>
 <h3>キャッシュのクリア</h3>
 	<a href="<?php echo $clear_link; ?>" class="button">キャッシュを全てクリア</a>
-</div>
 <?php endif; ?>
 
 <?php if ( apply_filters( 'allow_generate_advanced_cache', true ) ) : ?>
@@ -183,9 +182,8 @@ function cache_setting_page() {
 <?php else : ?>
 	<p>advanced-cache.php、または <?php echo basename( WP_CONTENT_DIR ); ?> に書き込み権限がありません。advanced-cache.phpの再生成を行うには、書き込み権限を設定してください。</p>
 <?php endif; ?>
-</div>
 <?php endif; ?>
-
+</div>
 <?php
 }
 

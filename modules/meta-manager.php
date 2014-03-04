@@ -49,6 +49,10 @@ class meta_manager {
 		$this->term_description = get_option( 'term_description' );
 		$this->ogp_image = get_option( 'ogp_image' );
 		$this->setting = wp_parse_args( get_option( 'meta_manager_settings', array() ), $this->default );
+		
+		if ( isset( $this->setting['ogp_output'] ) && $this->setting['ogp_output'] ) {
+			add_filter( 'jetpack_enable_open_graph', '__return_false' );
+		}
 	}
 	
 	function taxonomy_update_hooks() {
@@ -226,7 +230,7 @@ private function get_post_meta() {
 	if ( ! empty( $this->setting['includes_taxonomies'] ) ) {
 		foreach ( $this->setting['includes_taxonomies'] as $taxonomy ) {
 			$taxonomy = get_taxonomy( $taxonomy );
-			if ( in_array( $post->post_type, $taxonomy->object_type ) ) {
+			if ( $taxonomy && in_array( $post->post_type, $taxonomy->object_type ) ) {
 				$terms = get_the_terms( $post->ID, $taxonomy->name );
 				if ( $terms ) {
 					$add_keywords = array();

@@ -17,7 +17,7 @@ function __construct() {
 }
 
 
-public function bread_crumb( $args = '' ) {
+static function bread_crumb( $args = '' ) {
 	global $WP_SiteManager;
 	$default = array(
 		'type'				=> 'list',

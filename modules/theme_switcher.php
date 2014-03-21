@@ -710,7 +710,7 @@ ORDER BY d.device_id ASC
 	}
 	
 	
-	public function is_device( $slug ) {
+	static function is_device( $slug ) {
 		global $WP_SiteManager;
 		return in_array( $WP_SiteManager->instance->theme_switcher->current_group, (array)$slug );
 	}

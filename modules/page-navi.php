@@ -10,7 +10,7 @@
  * License:				GPLv2 or later
 */
 class WP_SiteManager_page_navi {
-public function page_navi( $args = '' ) {
+static function page_navi( $args = '' ) {
 	global $wp_query, $WP_SiteManager;
 
 	if ( ! ( is_archive() || is_home() || is_search() ) ) { return; }

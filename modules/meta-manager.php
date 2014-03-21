@@ -316,8 +316,8 @@ private function get_ogp( $meta ) {
 	$og_output = '';
 	$og_tags = array();
 
-	$image_width  = absint( apply_filters( 'wp_sitemanager_open_graph_image_width', 300 ) );
-	$image_height = absint( apply_filters( 'wp_sitemanager_open_graph_image_height', 300 ) );
+	$image_width  = apply_filters( 'wp_sitemanager_open_graph_image_width', false );
+	$image_height = apply_filters( 'wp_sitemanager_open_graph_image_height', false );
 
 	$sns_meta = $this->get_sns_meta( $meta );
 
@@ -443,15 +443,14 @@ private function get_sns_meta( $meta ) {
 private function og_get_image( $width = 200, $height = 200 ) { // Facebook requires thumbnails to be a minimum of 200x200
 	global $post;
 	// see. http://developers.facebook.com/docs/opengraph/creating-object-types/
+	
+	$size = is_int( $width ) && is_int( $height ) ? array( absint( $width ), absint( $height ) ) : false;
 
-	if ( $width > 1500 ) $width = 1500;
-	if ( $height > 1500 ) $height = 1500;
-
-	$image = get_option( 'ogp_image' ) ? wp_get_attachment_image_src( get_option( 'ogp_image' ) , array( $width, $height ) ) : '';
+	$image = get_option( 'ogp_image' ) ? wp_get_attachment_image_src( get_option( 'ogp_image' ) , $size ) : '';
 	$image = ! empty($image) ? $image[0] : '';
 
 	if ( is_attachment() ) {
-		$image = wp_get_attachment_image_src( $post->ID, array( $width, $height ) );
+		$image = wp_get_attachment_image_src( $post->ID, $size );
 		$image = $image[0];
 	} elseif ( is_singular() ) {
 		$args = array(
@@ -466,11 +465,11 @@ private function og_get_image( $width = 200, $height = 200 ) { // Facebook requi
 		$attachments = get_posts( $args );
 
 		if ( post_type_supports( $post->post_type, 'thumbnail' ) &&  has_post_thumbnail( $post->ID ) ) {
-			$image = wp_get_attachment_image_src( get_post_thumbnail_id($post->ID), array( $width, $height ) );
+			$image = wp_get_attachment_image_src( get_post_thumbnail_id( $post->ID ), $size );
 			$image = $image[0];
 		} elseif ( $attachments ) {
 			$attachment = $attachments[0];
-			$image = wp_get_attachment_image_src( $attachment->ID, array( $width, $height ) );
+			$image = wp_get_attachment_image_src( $attachment->ID, $size );
 			$image = $image[0];
 		} else {
 			$content_image = preg_match_all('/<img.+src=\"([^\"]+)\".[^>]*>/i', $post->post_content, $matches);

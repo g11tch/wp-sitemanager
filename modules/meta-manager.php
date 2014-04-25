@@ -26,6 +26,8 @@ class meta_manager {
 	var $term_description;
 	var $parent;
 	var $_server_https;
+	var $meta_description_chars = 120;
+	var $ogp_description_chars = 120;
 
 	function __construct( $parent ) {
 		$this->parent = $parent;
@@ -219,7 +221,8 @@ private function get_meta() {
 	if ( ! empty( $option ) && $option['description'] ) {
 		$meta['description'] = $option['description'];
 	}
-	$meta['description'] = mb_substr( $meta['description'], 0, 120, 'UTF-8' );
+	$this->meta_description_chars = apply_filters( 'wp_sitemanager_meta_description_chars', $this->meta_description_chars );
+	$meta['description'] = mb_substr( $meta['description'], 0, $this->meta_description_chars, 'UTF-8' );
 	return $meta;
 }
 
@@ -340,7 +343,8 @@ private function get_ogp( $meta ) {
 		$og_tags['og:title'] = apply_filters( 'wp_sitemanager_open_graph_title', '(no title)' );
 
 	// Shorten the description if it's too long
-	$og_tags['og:description'] = mb_substr( $og_tags['og:description'], 0, 120, 'UTF-8' );
+	$this->ogp_description_chars = apply_filters( 'wp_sitemanager_ogp_description_chars', $this->ogp_description_chars );
+	$og_tags['og:description'] = mb_substr( $og_tags['og:description'], 0, $this->ogp_description_chars, 'UTF-8' );
 	
 	$og_tags = apply_filters( 'wp_sitemanager_open_graph_tags', $og_tags );
 

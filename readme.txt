@@ -1,9 +1,9 @@
 === WP SiteManager ===
-Contributors: primestrategy, jim912
+Contributors: primestrategy, jim912, Kengyu Nakamura
 Tags: cms, mobile, sitemap, pager, page navi, breadcrumb
 Requires at least: 3.5
-Tested up to: 3.9
-Stable tag: 1.0.15
+Tested up to: 4.2.2
+Stable tag: 1.1.0
 
 WP SiteManager is an integrated package comprising of necessary functions for using WordPress as a CMS.
 
@@ -33,6 +33,11 @@ In addition, it also makes possible snippet optimization through management of m
 2. Go to plugins list and activate "WP SiteManager". 
 
 == Changelog ==
+= 1.1 =
+* change : post meta boxes priority 10 to 9999.
+* change : default og image size to 1200 * 630
+* add : using expired cache while updating cache data to site cache
+
 = 1.0.15 =
 * change : add two filter hooks. "wp_sitemanager_meta_description_chars" and "wp_sitemanager_ogp_description_chars"
 

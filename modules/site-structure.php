@@ -28,32 +28,32 @@ class site_structure {
 		$this->settings['sitemap'] = get_option( 'wp-sitemanager-sitemap-settings' );
 		if ( is_admin() ) {
 			// 管理画面にサイトマップのメニューを追加
-			add_action( 'admin_menu'					, array( &$this, 'add_sitemap_page' ) );
+			add_action( 'admin_menu'					, array( $this, 'add_sitemap_page' ) );
 			
 			// サイトマップ設定の保存
-			add_action( 'load-wp-sitemanager_page_wp-sitemanager-structure', array( &$this, 'update_sitemap_settings' ) );
+			add_action( 'load-wp-sitemanager_page_wp-sitemanager-structure', array( $this, 'update_sitemap_settings' ) );
 
 			// 固定ページなどの投稿画面にカテゴリーページのチェックボックスを追加表示
-			add_action( 'post_submitbox_misc_actions'	, array( &$this, 'add_exclude_sitemap_checkbox' ) );
+			add_action( 'post_submitbox_misc_actions'	, array( $this, 'add_exclude_sitemap_checkbox' ) );
 
 			// カスタムフィールドにカテゴリーページの設定を格納
-			add_action( 'wp_insert_post'				, array( &$this, 'update_exclude_sitemap_setting' ), 10, 2 );
+			add_action( 'wp_insert_post'				, array( $this, 'update_exclude_sitemap_setting' ), 10, 2 );
 			
 			// サイトマップ除外設定のフック登録
-			add_action( 'wp_loaded'						, array( &$this, 'taxonomy_update_hooks' ), 9999 );
+			add_action( 'wp_loaded'						, array( $this, 'taxonomy_update_hooks' ), 9999 );
 			
-			add_action( 'admin_print_styles-wp-sitemanager_page_wp-sitemanager-structure', array( &$this->parent, 'print_icon_style' ) );
+			add_action( 'admin_print_styles-wp-sitemanager_page_wp-sitemanager-structure', array( $this->parent, 'print_icon_style' ) );
 			
-			add_filter( 'iis7_supports_permalinks'      , array( &$this, 'disallow_rewrite_web_config' ) );
+			add_filter( 'iis7_supports_permalinks'      , array( $this, 'disallow_rewrite_web_config' ) );
 		} else {
-			add_action( 'wp'							, array( &$this, 'enqueue_sitemap_style' ) );
+			add_action( 'wp'							, array( $this, 'enqueue_sitemap_style' ) );
 		}
 		// カテゴリーページクラスのインスタンス生成
 		new category_page;
 		// サイトマップ表示用ショートコード
-		add_shortcode( 'sitemap'			, array( &$this, 'sitemap' ) );
+		add_shortcode( 'sitemap'			, array( $this, 'sitemap' ) );
 		// サブナビウィジェットの登録
-		add_action( 'widgets_init'			, array( &$this, 'register_subnavi_widget' ) );
+		add_action( 'widgets_init'			, array( $this, 'register_subnavi_widget' ) );
 	}
 
 	/*
@@ -61,7 +61,7 @@ class site_structure {
 	 * @since 0.0.1
 	 */
 	public function add_sitemap_page() {
-		add_submenu_page( $this->parent->root, 'サイト構造', 'サイト構造', 'administrator', basename( $this->parent->root ) . '-structure', array( &$this, 'setting_page' ) );
+		add_submenu_page( $this->parent->root, 'サイト構造', 'サイト構造', 'administrator', basename( $this->parent->root ) . '-structure', array( $this, 'setting_page' ) );
 	}
 	
 	/*
@@ -73,7 +73,6 @@ class site_structure {
 		$sitemap_styles = $this->get_sitemap_styles();
 ?>
 <div class="wrap">
-	<?php screen_icon( 'prime-icon32' ); ?>
 	<h2>サイトマップ設定</h2>
 	<p>サイトマップの設定を行うことにより、サイトマップ、パンくずナビ、サブナビゲーションの表示を統合的に管理できます。</p>
 
@@ -347,10 +346,10 @@ AND			`meta_value` = '1'
 		if ( ! empty( $taxonomies ) ) {
 			foreach ( $taxonomies as $taxonomy ) {
 				add_action( $taxonomy . '_add_form_fields'	, array( $this, 'add_sitemap_exclude_term_checkbox' ) );
-				add_action( $taxonomy . '_edit_form_fields'	, array( &$this, 'edit_sitemap_exclude_term_checkbox' ), 0, 2 );
-				add_action( 'created_' . $taxonomy			, array( &$this, 'update_sitemap_exclude_terms' ) );
-				add_action( 'edited_' . $taxonomy			, array( &$this, 'update_sitemap_exclude_terms' ) );
-				add_action( 'delete_' . $taxonomy			, array( &$this, 'delete_sitemap_exclude_terms' ) );
+				add_action( $taxonomy . '_edit_form_fields'	, array( $this, 'edit_sitemap_exclude_term_checkbox' ), 0, 2 );
+				add_action( 'created_' . $taxonomy			, array( $this, 'update_sitemap_exclude_terms' ) );
+				add_action( 'edited_' . $taxonomy			, array( $this, 'update_sitemap_exclude_terms' ) );
+				add_action( 'delete_' . $taxonomy			, array( $this, 'delete_sitemap_exclude_terms' ) );
 			}
 		}
 	}
@@ -482,25 +481,25 @@ class category_page {
 	function __construct() {
 		if ( is_admin() ) {
 			// 固定ページなどの投稿画面にカテゴリーページのチェックボックスを追加表示
-			add_action( 'post_submitbox_misc_actions'	, array( &$this, 'add_category_page_checkbox' ) );
+			add_action( 'post_submitbox_misc_actions'	, array( $this, 'add_category_page_checkbox' ) );
 
 			// カスタムフィールドにカテゴリーページの設定を格納
-			add_action( 'wp_insert_post'				, array( &$this, 'update_category_page_setting' ), 10, 2 );
+			add_action( 'wp_insert_post'				, array( $this, 'update_category_page_setting' ), 10, 2 );
 		}
 		// カテゴリーページ設定されている固定ページのパーマリンクを子ページのものにフィルタリング
-		add_filter( 'page_link'				, array( &$this, 'replace_category_page_permalink' ), 10, 2 );
+		add_filter( 'page_link'				, array( $this, 'replace_category_page_permalink' ), 10, 2 );
 		
 		// カテゴリーページ設定されているカスタム投稿タイプのパーマリンクを子ページのものにフィルタリング
-		add_filter( 'post_type_link'		, array( &$this, 'replace_category_page_permalink' ), 10, 2 );
+		add_filter( 'post_type_link'		, array( $this, 'replace_category_page_permalink' ), 10, 2 );
 		
 		// カテゴリーページにアクセスされた場合のリダイレクト処理
-		add_action( 'template_redirect'		, array( &$this, 'redirect_category_page' ) );
+		add_action( 'template_redirect'		, array( $this, 'redirect_category_page' ) );
 		
 		// カテゴリーページのフィードの中身を空にする
-		add_filter( 'the_content_feed'		, array( &$this, 'filter_feed_content' ) );
-		add_filter( 'the_excerpt_rss'		, array( &$this, 'filter_feed_content' ), 9999 );
-		add_filter( 'the_content'			, array( &$this, 'filter_feed_content' ) );
-		add_filter( 'the_excerpt'			, array( &$this, 'filter_feed_content' ), 9999 );
+		add_filter( 'the_content_feed'		, array( $this, 'filter_feed_content' ) );
+		add_filter( 'the_excerpt_rss'		, array( $this, 'filter_feed_content' ), 9999 );
+		add_filter( 'the_content'			, array( $this, 'filter_feed_content' ) );
+		add_filter( 'the_excerpt'			, array( $this, 'filter_feed_content' ), 9999 );
 	}
 
 	/*
@@ -816,7 +815,7 @@ class Walker_pageNavi extends Walker_Page {
 		if ( is_array( $args[0] ) )
 			$args[0]['has_children'] = ! empty( $children_elements[$element->$id_field] );
 		$cb_args = array_merge( array(&$output, $element, $depth), $args);
-		call_user_func_array(array(&$this, 'start_el'), $cb_args);
+		call_user_func_array(array($this, 'start_el'), $cb_args);
 
 		
 
@@ -831,7 +830,7 @@ class Walker_pageNavi extends Walker_Page {
 						$newlevel = true;
 						//start the child delimiter
 						$cb_args = array_merge( array(&$output, $depth), $args);
-						call_user_func_array(array(&$this, 'start_lvl'), $cb_args);
+						call_user_func_array(array($this, 'start_lvl'), $cb_args);
 					}
 					$this->display_element( $child, $children_elements, $max_depth, $depth + 1, $args, $output );
 					if ( $custom_structure ) {
@@ -852,7 +851,7 @@ class Walker_pageNavi extends Walker_Page {
 							if ( ! isset( $newlevel ) ) {
 								$newlevel = true;
 								$cb_args = array_merge( array(&$output, $depth), $args );
-								call_user_func_array(array(&$this, 'start_lvl'), $cb_args);
+								call_user_func_array(array($this, 'start_lvl'), $cb_args);
 							}
 							$output = $this->display_post_type_tree( $post_type, $output, $depth, $args );
 							$this->displayed[] = $post_type;
@@ -865,12 +864,12 @@ class Walker_pageNavi extends Walker_Page {
 		if ( isset($newlevel) && $newlevel ){
 			//end the child delimiter
 			$cb_args = array_merge( array(&$output, $depth), $args);
-			call_user_func_array(array(&$this, 'end_lvl'), $cb_args);
+			call_user_func_array(array($this, 'end_lvl'), $cb_args);
 		}
 
 		//end this element
 		$cb_args = array_merge( array(&$output, $element, $depth), $args);
-		call_user_func_array(array(&$this, 'end_el'), $cb_args);
+		call_user_func_array(array($this, 'end_el'), $cb_args);
 	}
 	
 	/*
@@ -1086,7 +1085,7 @@ class infinity_sub_navi_widget extends WP_Widget {
 			case 'y_archives' :
 				$archive_type = 'yearly';
 				$widget_title = __( 'Archives' );
-				add_filter( 'get_archives_link', array( &$this, 'add_nen_for_get_archives' ) );
+				add_filter( 'get_archives_link', array( $this, 'add_nen_for_get_archives' ) );
 				break;
 			case 'm_archives' :
 				$archive_type = 'monthly';

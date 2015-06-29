@@ -26,16 +26,16 @@ class theme_switcher {
 		$this->group_table = $wpdb->prefix . 'sitemanager_device_group';
 		$this->relation_table = $wpdb->prefix . 'sitemanager_device_relation';
 
-		add_action( 'plugins_loaded'                                                    , array( &$this, 'get_avaiable_themes' ), 9 );
-		add_action( 'wpmu_new_blog'                                                     , array( &$this, 'do_ms_activation_module_hook' ) );
+		add_action( 'plugins_loaded'                                                    , array( $this, 'get_avaiable_themes' ), 9 );
+		add_action( 'wpmu_new_blog'                                                     , array( $this, 'do_ms_activation_module_hook' ) );
 		if ( ! is_admin() ) {
-			add_action( 'plugins_loaded'                                                , array( &$this, 'switch_theme' ) );
-			add_filter( 'wp_headers'                                                    , array( &$this, 'add_vary_header' ) );
+			add_action( 'plugins_loaded'                                                , array( $this, 'switch_theme' ) );
+			add_filter( 'wp_headers'                                                    , array( $this, 'add_vary_header' ) );
 		} else {
-			add_action( 'load-wp-sitemanager_page_wp-sitemanager-device'                , array( &$this, 'update_device_setting' ) );
-			add_action( 'admin_menu'                                                    , array( &$this, 'add_setting_menu' ) );
-			add_action( 'admin_print_styles-wp-sitemanager_page_wp-sitemanager-device'  , array( &$this->parent, 'print_icon_style' ) );
-			add_action( 'enabled_sitemanager_module-theme_switcher'                     , array( &$this, 'do_activation_module_hook' ) );
+			add_action( 'load-wp-sitemanager_page_wp-sitemanager-device'                , array( $this, 'update_device_setting' ) );
+			add_action( 'admin_menu'                                                    , array( $this, 'add_setting_menu' ) );
+			add_action( 'admin_print_styles-wp-sitemanager_page_wp-sitemanager-device'  , array( $this->parent, 'print_icon_style' ) );
+			add_action( 'enabled_sitemanager_module-theme_switcher'                     , array( $this, 'do_activation_module_hook' ) );
 		}
 	}
 	
@@ -50,7 +50,7 @@ class theme_switcher {
 
 
 	public function add_setting_menu() {
-		add_submenu_page( $this->parent->root, 'マルチデバイス', 'マルチデバイス', 'administrator', basename( $this->parent->root ) . '-device', array( &$this, 'setting_page_controller' ) );
+		add_submenu_page( $this->parent->root, 'マルチデバイス', 'マルチデバイス', 'administrator', basename( $this->parent->root ) . '-device', array( $this, 'setting_page_controller' ) );
 	}
 
 
@@ -346,7 +346,6 @@ INSERT INTO `{$this->relation_table}` (`group_id`, `device_id`) VALUES
 		$add_device_url = add_query_arg( array( 'action' => 'add_device' ) );
 ?>
 <div class="wrap">
-	<?php screen_icon( 'prime-icon32' ); ?>
 	<h2>デバイス判定</h2>
 	<h3>デバイスグループ <a href="<?php echo esc_url( $add_group_url ); ?>" class="button">追加</a></h3>
 	<?php $groups->display(); ?>
@@ -496,8 +495,8 @@ endif;
 
 	public function switch_theme() {
 		if ( $this->detect_device_template() !== false ) {
-			add_filter( 'template'  , array( &$this, 'switch_template' ) );
-			add_filter( 'stylesheet', array( &$this, 'switch_stylesheet' ) );
+			add_filter( 'template'  , array( $this, 'switch_template' ) );
+			add_filter( 'stylesheet', array( $this, 'switch_stylesheet' ) );
 		}
 	}
 

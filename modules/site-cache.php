@@ -4,7 +4,7 @@
  * Module Description:	キャッシュ機能を利用可能にします。
  * Order:				120
  * First Introduced:	1.0.3
- * Major Changes In:	
+ * Major Changes In:	1.1.0
  * Builtin:				false
  * Free:				true
  * License:				GPLv2 or later
@@ -29,38 +29,43 @@ function __construct( $parent ) {
 	}
 
 	if ( is_admin() ) {
-		add_action( 'admin_menu'                                   , array( &$this, 'add_setting_menu' ) );
-		add_action( 'load-wp-sitemanager_page_wp-sitemanager-cache', array( &$this, 'update_cache_setting' ) );
-//		add_action( 'theme_switcher/device_updated'                , array( &$this, 'clear_all_cache' ) );
-		add_action( 'theme_switcher/device_updated'                , array( &$this, 'generate_advanced_cache_file' ) );
-//		add_action( 'theme_switcher/device_group_updated'          , array( &$this, 'clear_all_cache' ) );
-		add_action( 'theme_switcher/device_group_updated'          , array( &$this, 'generate_advanced_cache_file' ) );
-		add_action( 'transition_post_status'                       , array( &$this, 'post_publish_clear_cache' ), 10, 3 );
-//		add_action( 'delete_term'                                  , array( &$this, 'clear_all_cache' ) );
-//		add_action( 'edited_term'                                  , array( &$this, 'clear_all_cache' ) );
-//		add_action( 'deleted_user'                                 , array( &$this, 'clear_all_cache' ) );
-//		add_action( 'profile_update'                               , array( &$this, 'clear_all_cache' ) );
+		add_action( 'admin_menu'                                   , array( $this, 'add_setting_menu' ) );
+		add_action( 'load-wp-sitemanager_page_wp-sitemanager-cache', array( $this, 'update_cache_setting' ) );
+//		add_action( 'theme_switcher/device_updated'                , array( $this, 'clear_all_cache' ) );
+		add_action( 'theme_switcher/device_updated'                , array( $this, 'generate_advanced_cache_file' ) );
+//		add_action( 'theme_switcher/device_group_updated'          , array( $this, 'clear_all_cache' ) );
+		add_action( 'theme_switcher/device_group_updated'          , array( $this, 'generate_advanced_cache_file' ) );
+		add_action( 'transition_post_status'                       , array( $this, 'post_publish_clear_cache' ), 10, 3 );
+//		add_action( 'delete_term'                                  , array( $this, 'clear_all_cache' ) );
+//		add_action( 'edited_term'                                  , array( $this, 'clear_all_cache' ) );
+//		add_action( 'deleted_user'                                 , array( $this, 'clear_all_cache' ) );
+//		add_action( 'profile_update'                               , array( $this, 'clear_all_cache' ) );
 	} else {
-		add_action( 'init'                                         , array( &$this, 'buffer_start' ) );
+		add_action( 'init'                                         , array( $this, 'buffer_start' ) );
 
-//		add_action( 'template_redirect'                            , array( &$this, 'check_vars' ) );
+//		add_action( 'template_redirect'                            , array( $this, 'check_vars' ) );
 	}
-	add_action( 'init'                                             , array( &$this, 'check_installed' ) );
-//	add_action( 'transition_comment_status'                        , array( &$this, 'transition_comment_status' ), 10, 3 );
-//	add_action( 'comment_post'                                     , array( &$this, 'new_comment' ), 10, 2 );
+	add_action( 'init'                                             , array( $this, 'check_installed' ) );
+//	add_action( 'transition_comment_status'                        , array( $this, 'transition_comment_status' ), 10, 3 );
+//	add_action( 'comment_post'                                     , array( $this, 'new_comment' ), 10, 2 );
 }
 
 function check_installed() {
-	if ( ! get_option( 'site_manager_cache_installed' ) ) {
+	$version = get_option( 'site_manager_cache_installed', false );
+	if ( ! $version ) {
 		$this->create_cache_table();
 		$this->generate_advanced_cache_file();
-	} elseif ( get_option( 'site_manager_cache_installed' ) < 2 ) {
+	} elseif ( $version < 2 ) {
 		$this->update_cache_table( 2 );
+		$this->update_cache_table( 3 );
+	} elseif ( $version < 3 ) {
+		$this->update_cache_table( 3 );
 	}
 }
 function create_cache_table() {
 	global $cache_db;
 
+	$charset_collate = $cache_db->get_charset_collate();
 	$sql = "
 CREATE TABLE `{$cache_db->prefix}site_cache` (
  `hash` varchar(32) NOT NULL,
@@ -69,25 +74,30 @@ CREATE TABLE `{$cache_db->prefix}site_cache` (
  `type` varchar(10) NOT NULL,
  `post_type` varchar(200) NOT NULL,
  `headers` text NOT NULL,
+ `user_agent` text NOT NULL,
+ `server` varchar(16) NOT NULL,
+ `updating` tinyint(1) NOT NULL DEFAULT '0',
  `create_time` datetime NOT NULL,
  `expire_time` datetime NOT NULL,
- PRIMARY KEY  (`hash`),
+ KEY `hash` (`hash`),
  KEY `expire_time` (`expire_time`),
- KEY `type` (`type`,`post_type`)
-) ENGINE=MyISAM DEFAULT CHARSET=utf8";
+ KEY `type` (`type`,`post_type`),
+ KEY `updating` (`updating`)
+) $charset_collate";
 
 	$cache_db->query( $sql );
 
 	$sql = "SHOW TABLES FROM `{$cache_db->dbname}` LIKE '{$cache_db->prefix}site_cache'";
 	$table_exists = $cache_db->get_var( $sql );
 	if ( $table_exists ) {
-		update_option( 'site_manager_cache_installed', 1 );
+		update_option( 'site_manager_cache_installed', 3 );
 	}
 }
 
 
 private function update_cache_table( $db_version ) {
 	global $cache_db;
+
 	switch ( $db_version ) {
 		case 2 :
 			$sql = "
@@ -97,13 +107,26 @@ ADD			`server` VARCHAR( 16 ) NOT NULL AFTER `user_agent`";
 			$cache_db->query( $sql );
 			update_option( 'site_manager_cache_installed', 2 );
 			break;
+		case 3 :
+			$sql = "
+ALTER TABLE `{$cache_db->prefix}site_cache`
+ADD			 `updating` BOOLEAN NOT NULL DEFAULT '0' AFTER `server` ,
+ADD INDEX	( `updating` )";
+			$cache_db->query( $sql );
+			$sql = "ALTER TABLE `{$cache_db->prefix}site_cache` DROP PRIMARY KEY";
+			$cache_db->query( $sql );
+			$sql = "ALTER TABLE `{$cache_db->prefix}site_cache` ADD INDEX ( `hash` )";
+			$cache_db->query( $sql );
+			update_option( 'site_manager_cache_installed', 3 );
+			$this->generate_advanced_cache_file();
+			break;
 		default :
 	}
 }
 
 
 function add_setting_menu() {
-	add_submenu_page( $this->parent->root, 'キャッシュ', 'キャッシュ', 'administrator', basename( $this->parent->root ) . '-cache', array( &$this, 'cache_setting_page' ) );
+	add_submenu_page( $this->parent->root, 'キャッシュ', 'キャッシュ', 'administrator', basename( $this->parent->root ) . '-cache', array( $this, 'cache_setting_page' ) );
 }
 
 function cache_setting_page() {
@@ -252,7 +275,10 @@ function check_vars() {
 }
 
 function buffer_start() {
-	ob_start( 'write_cache_file' );
+	if ( defined( 'WP_CACHE' ) && WP_CACHE && isset( $_SERVER['REQUEST_URI'] ) && isset( $_SERVER['HTTP_USER_AGENT'] ) && isset( $_SERVER['REQUEST_METHOD'] ) && isset( $_SERVER['SCRIPT_NAME'] ) && isset( $_SERVER['SERVER_NAME'] ) ) {
+		ob_start( 'write_cache_file' );
+	}
+
 }
 
 function write_cache_file() {
@@ -463,8 +489,6 @@ function write_cache_file( $buffer ) {
 			}
 		}
 
-		$cache = $buffer . "\n" . '<!-- page cached by WP SiteManager -->';
-		
 		$ua = $_SERVER['HTTP_USER_AGENT'];
 		$regexes = get_option( 'sitemanager_device_rules', array() );
 
@@ -556,6 +580,9 @@ WHERE	`hash` = '$hash'
 		$headers = headers_list();
 		foreach ( $headers as $header ) {
 			list( $key, $val ) = explode( ': ', $header, 2 );
+			if ( 'Location' == $key ) {
+				return $buffer;
+			}
 			if ( $key == 'Vary' && strpos( $val, 'Cookie' ) === false ) {
 				$val .= ',Cookie';
 			}
@@ -622,7 +649,8 @@ WHERE	`hash` = '$hash'
 		}
 		
 		$expire = apply_filters( 'site_cache_expire_time', $life_time[$life_time_key] * 60, $life_time_key );
-		
+		$cache = $buffer . "\n" . '<!-- page cached by WP SiteManager. ' . date( 'H:i:s' ) . '(GMT). Expire : ' . date( 'H:i:s', time() + $expire ) . '(GMT). -->';
+
 		$server = defined( 'CACHE_SERVER' ) ? CACHE_SERVER : '';
 		$data = array(
 			'hash'        => $hash,
@@ -633,16 +661,17 @@ WHERE	`hash` = '$hash'
 			'headers'     => serialize( $header_arr ),
 			'user_agent'  => $_SERVER['HTTP_USER_AGENT'],
 			'server'      => $server,
+			'updating'    => 0,
 			'create_time' => date( 'Y-m-d H:i:s' ),
 			'expire_time' => date( 'Y-m-d H:i:s', time() + $expire ),
 		);
 
 		if ( ! $row ) {
-			$cache_db->insert( $cache_db->prefix . 'site_cache', $data );
+			$cache_db->insert( $cache_db->prefix . 'site_cache', $data, array( '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%d', '%s', '%s' ) );
 		} elseif ( $row->expire_time < date( 'Y-m-d H:i:s' ) ) {
-			$cache_db->update( $cache_db->prefix . 'site_cache', $data, array( 'hash' => $hash ) );
-		} elseif ( strpos( $cache_db->content, '<!-- page cached by WP SiteManager -->' ) === false ) {
-			$cache_db->update( $cache_db->prefix . 'site_cache', $data, array( 'hash' => $hash ) );
+			$cache_db->update( $cache_db->prefix . 'site_cache', $data, array( 'hash' => $hash, 'type' => $type, 'expire_time' => $row->expire_time ), array( '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%d', '%s', '%s' ), array( '%s', '%s', '%s' ) );
+		} elseif ( strpos( $row->content, '<!-- page cached by KUSANAGI. ' ) === false || strpos( $row->content, '<!-- page cached by WP SiteManager. ' ) === false ) {
+			$cache_db->update( $cache_db->prefix . 'site_cache', $data, array( 'hash' => $hash, 'type' => $type, 'expire_time' => $row->expire_time ), array( '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%d', '%s', '%s' ), array( '%s', '%s', '%s' ) );
 		}
 	}
 	return $buffer;

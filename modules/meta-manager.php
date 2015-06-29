@@ -33,18 +33,18 @@ class meta_manager {
 		$this->parent = $parent;
 
 		if ( is_admin() ) {
-			add_action( 'add_meta_boxes'					, array( &$this, 'add_post_meta_box' ), 10, 2 );
-			add_action( 'wp_insert_post'					, array( &$this, 'update_post_meta' ) );
-			add_action( 'admin_print_styles-post.php'		, array( &$this, 'print_metabox_styles' ) );
-			add_action( 'admin_print_styles-post-new.php'	, array( &$this, 'print_metabox_styles' ) );
-			add_action( 'wp-sitemanager-access-page'		, array( &$this, 'setting_page' ) );
-			add_action( 'wp-sitemanager-update-access'		, array( &$this, 'update_settings' ) );
-			add_action( 'admin_print_styles-wp-sitemanager_page_wp-sitemanager-access'	, array( &$this, 'setting_page_scripts') );
+			add_action( 'add_meta_boxes'					, array( $this, 'add_post_meta_box' ), 9999, 2 );
+			add_action( 'wp_insert_post'					, array( $this, 'update_post_meta' ) );
+			add_action( 'admin_print_styles-post.php'		, array( $this, 'print_metabox_styles' ) );
+			add_action( 'admin_print_styles-post-new.php'	, array( $this, 'print_metabox_styles' ) );
+			add_action( 'wp-sitemanager-access-page'		, array( $this, 'setting_page' ) );
+			add_action( 'wp-sitemanager-update-access'		, array( $this, 'update_settings' ) );
+			add_action( 'admin_print_styles-wp-sitemanager_page_wp-sitemanager-access'	, array( $this, 'setting_page_scripts') );
 		}
 
-		add_action( 'wp_loaded', array( &$this, 'taxonomy_update_hooks' ), 9999 );
-		add_action( 'wp_head'  , array( &$this, 'output_meta' ), 0 );
-		add_action( 'wp_head'  , array( &$this, 'check_and_replace_canonical_link' ), 9 );
+		add_action( 'wp_loaded', array( $this, 'taxonomy_update_hooks' ), 9999 );
+		add_action( 'wp_head'  , array( $this, 'output_meta' ), 0 );
+		add_action( 'wp_head'  , array( $this, 'check_and_replace_canonical_link' ), 9 );
 
 
 		$this->term_keywords = get_option( 'term_keywords' );
@@ -62,10 +62,10 @@ class meta_manager {
 		if ( ! empty( $taxonomies ) ) {
 			foreach ( $taxonomies as $taxonomy ) {
 				add_action( $taxonomy . '_add_form_fields', array( $this, 'add_keywords_form' ) );
-				add_action( $taxonomy . '_edit_form_fields', array( &$this, 'edit_keywords_form' ), 0, 2 );
-				add_action( 'created_' . $taxonomy, array( &$this, 'update_term_meta' ) );
-				add_action( 'edited_' . $taxonomy, array( &$this, 'update_term_meta' ) );
-//				add_action( 'delete_' . $taxonomy, array( &$this, 'delete_term_meta' ) );
+				add_action( $taxonomy . '_edit_form_fields', array( $this, 'edit_keywords_form' ), 0, 2 );
+				add_action( 'created_' . $taxonomy, array( $this, 'update_term_meta' ) );
+				add_action( 'edited_' . $taxonomy, array( $this, 'update_term_meta' ) );
+//				add_action( 'delete_' . $taxonomy, array( $this, 'delete_term_meta' ) );
 			}
 		}
 	}
@@ -117,7 +117,7 @@ function update_term_meta( $term_id ) {
 
 function add_post_meta_box( $post_type, $post ) {
 	if ( isset( $post->post_type ) && in_array( $post_type, get_post_types( array( 'public' => true ) ) ) && $post_type != 'attachment' ) {
-		add_meta_box( 'postmeta_meta_box', 'メタ情報', array( &$this, 'post_meta_box' ), $post_type, 'normal', 'high');
+		add_meta_box( 'postmeta_meta_box', 'メタ情報', array( $this, 'post_meta_box' ), $post_type, 'normal', 'high');
 	}
 }
 
@@ -444,7 +444,7 @@ private function get_sns_meta( $meta ) {
 	return $tags;
 }
 
-private function og_get_image( $width = 200, $height = 200 ) { // Facebook requires thumbnails to be a minimum of 200x200
+private function og_get_image( $width = 1200, $height = 630 ) { // Facebook requires thumbnails to be a minimum of 200x200
 	global $post;
 	// see. http://developers.facebook.com/docs/opengraph/creating-object-types/
 	
@@ -758,7 +758,7 @@ private function get_pagenum_link($pagenum = 1, $request, $escape = true ) {
 public function check_and_replace_canonical_link() {
 	if ( has_action( 'wp_head', 'rel_canonical' ) ) {
 		remove_action( 'wp_head', 'rel_canonical' );
-		add_action( 'wp_head', array( &$this, 'rel_canonical' ) );
+		add_action( 'wp_head', array( $this, 'rel_canonical' ) );
 	}
 }
 

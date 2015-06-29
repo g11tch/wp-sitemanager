@@ -2,9 +2,9 @@
 /*
  Plugin Name: WP SiteManager
  Plugin URI: http://www.prime-strategy.co.jp/
- Description: WP SiteManager は、WordPress を CMS として利用する際に必須となる機能を複数搭載した統合プラグインです。
+ Description: WP SiteManager is an integrated package comprising of necessary functions for using WordPress as a CMS.
  Author: Prime Strategy Co.,LTD.
- Version: 1.0.15
+ Version: 1.1.0
  Author URI: http://www.prime-strategy.co.jp/
  License: GPLv2 or later
 */
@@ -27,32 +27,32 @@ class WP_SiteManager {
 			$page_hook = 'toplevel_page_' . str_replace( '.php', '', $this->root );
 
 			// WP SiteManagerの基本メニュー出力
-			add_action( 'admin_menu'			, array( &$this, 'add_cms_menu' ) );
+			add_action( 'admin_menu'			, array( $this, 'add_cms_menu' ) );
 
 			// WP SiteManager管理画面共通のCSS出力
-			add_action( 'admin_print_styles-' . $page_hook								, array( &$this, 'print_icon_style' ) );
+			add_action( 'admin_print_styles-' . $page_hook								, array( $this, 'print_icon_style' ) );
 
 			// モジュール一覧ページ用のCSS出力
-			add_action( 'admin_print_styles-' . $page_hook								, array( &$this, 'module_page_styles' ) );
+			add_action( 'admin_print_styles-' . $page_hook								, array( $this, 'module_page_styles' ) );
 
 			// モジュールの有効/無効切り替えプロセス
-			add_action( 'load-' . $page_hook											, array( &$this, 'update_disabled_modules' ) );
+			add_action( 'load-' . $page_hook											, array( $this, 'update_disabled_modules' ) );
 
 			// 一般設定のデータ更新処理
-//			add_action( 'wp-sitemanager_page_wp-sitemanager-general'					, array( &$this, 'update_general' ) );
+//			add_action( 'wp-sitemanager_page_wp-sitemanager-general'					, array( $this, 'update_general' ) );
 
 			// WP SiteManager管理画面共通のCSS出力
-//			add_action( 'admin_print_styles-wp-sitemanager_page_wp-sitemanager-general'	, array( &$this, 'print_icon_style' ) );
+//			add_action( 'admin_print_styles-wp-sitemanager_page_wp-sitemanager-general'	, array( $this, 'print_icon_style' ) );
 
 			// アクセス設定のデータ更新処理
-			add_action( 'wp-sitemanager_page_wp-sitemanager-access'						, array( &$this, 'update_access' ) );
+			add_action( 'wp-sitemanager_page_wp-sitemanager-access'						, array( $this, 'update_access' ) );
 
 			// WP SiteManager管理画面共通のCSS出力
-			add_action( 'admin_print_styles-wp-sitemanager_page_wp-sitemanager-access'	, array( &$this, 'print_icon_style' ) );
+			add_action( 'admin_print_styles-wp-sitemanager_page_wp-sitemanager-access'	, array( $this, 'print_icon_style' ) );
 
-			register_activation_hook( __FILE__											, array( &$this, 'do_activation_module_hooks' ) );
+			register_activation_hook( __FILE__											, array( $this, 'do_activation_module_hooks' ) );
 		}
-		add_action( 'infinity_key_auth_update_hook'									, array( &$this, 'api_key_auth_update' ) );
+		add_action( 'infinity_key_auth_update_hook'									, array( $this, 'api_key_auth_update' ) );
 
 		$this->load_modules();
 	}
@@ -84,10 +84,10 @@ class WP_SiteManager {
 	 * @since 0.0.1
 	 */
 	public function add_cms_menu() {
-		add_submenu_page( $this->root, 'モジュール', 'モジュール', 'administrator', __FILE__, array( &$this, 'manage_module_page' ) );
-		add_object_page( 'WP SiteManager', 'WP SiteManager', 'administrator', __FILE__, array( &$this, 'manage_module_page' ) );
-//		add_submenu_page( $this->root, '一般設定', '一般設定', 'administrator', basename( __FILE__ ) . '-general', array( &$this, 'general_page' ) );
-		add_submenu_page( $this->root, 'SEO &amp; SMO', 'SEO &amp; SMO', 'administrator', basename( __FILE__ ) . '-access', array( &$this, 'access_page' ) );
+		add_submenu_page( $this->root, 'モジュール', 'モジュール', 'administrator', __FILE__, array( $this, 'manage_module_page' ) );
+		add_object_page( 'WP SiteManager', 'WP SiteManager', 'administrator', __FILE__, array( $this, 'manage_module_page' ) );
+//		add_submenu_page( $this->root, '一般設定', '一般設定', 'administrator', basename( __FILE__ ) . '-general', array( $this, 'general_page' ) );
+		add_submenu_page( $this->root, 'SEO &amp; SMO', 'SEO &amp; SMO', 'administrator', basename( __FILE__ ) . '-access', array( $this, 'access_page' ) );
 	}
 
 	/*
@@ -162,7 +162,6 @@ class WP_SiteManager {
 		$api_link = add_query_arg( array( 'action' => 'register', 'lang' => get_locale() ),$this->api_server . 'wp-login.php' );
 ?>
 <div class="wrap">
-	<?php screen_icon( 'prime-icon32' ); ?>
 	<h2>WP SiteManager</h2>
 	<h3>モジュール</h3>
 <?php
@@ -414,7 +413,6 @@ endif;
 	public function general_page() {
 ?>
 <div class="wrap">
-	<?php screen_icon( 'prime-icon32' ); ?>
 	<h2>一般設定</h2>
 	<form action="" method="post">
 		<?php wp_nonce_field( 'wp-sitemanager-general' ); ?>
@@ -448,7 +446,6 @@ endif;
 	public function access_page() {
 ?>
 <div class="wrap">
-	<?php screen_icon( 'prime-icon32' ); ?>
 	<h2>SEO &amp; SMO</h2>
 	<form action="" method="post">
 		<?php wp_nonce_field( 'wp-sitemanager-access' ); ?>

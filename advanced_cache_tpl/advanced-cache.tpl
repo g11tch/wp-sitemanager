@@ -13,8 +13,8 @@ class SiteManagerAdvancedCache {
 
 	function __construct() {
 		global $table_prefix;
-		
-		if ( $_SERVER['REQUEST_METHOD'] != 'GET' ) { return; }
+		if ( ! isset( $_SERVER['REQUEST_URI'] ) || ! isset( $_SERVER['HTTP_USER_AGENT'] ) || ! isset( $_SERVER['REQUEST_METHOD'] ) || ! isset( $_SERVER['SCRIPT_NAME'] ) || ! isset( $_SERVER['SERVER_NAME'] ) ) { return; }
+		if ( ! isset( $_SERVER['REQUEST_METHOD'] ) || $_SERVER['REQUEST_METHOD'] != 'GET' ) { return; }
 		if ( defined( 'CACHE_EXCLUDE_IP' ) ) {
 			$exclude_ips = explode( '|', CACHE_EXCLUDE_IP );
 			foreach ( $exclude_ips as $exclude_ip ) {
@@ -32,9 +32,39 @@ class SiteManagerAdvancedCache {
 			}
 		}
 		### QUERY KEYS ###
-		if ( ! $group = $this->get_device_group() ) {
-			$group = '';
+
+		if ( defined( 'CACHE_DB_NAME' ) && defined( 'CACHE_DB_USER' ) && defined( 'CACHE_DB_PASSWORD' ) && defined( 'CACHE_DB_HOST' ) ) {
+			$dbset = array(
+				'host' => CACHE_DB_HOST,
+				'user' => CACHE_DB_USER,
+				'pass' => CACHE_DB_PASSWORD,
+				'name' => CACHE_DB_NAME
+				
+			);
+		} else {
+			$dbset = array(
+				'host' => DB_HOST,
+				'user' => DB_USER,
+				'pass' => DB_PASSWORD,
+				'name' => DB_NAME
+				
+			);
 		}
+
+		$dbh = mysql_connect( 
+			$dbset['host'],
+			$dbset['user'],
+			$dbset['pass'],
+			true
+		);
+		if ( false === $dbh ) { return; }
+		if ( function_exists( 'mysql_set_charset' ) ) {
+			mysql_set_charset( DB_CHARSET, $dbh );
+		} else {
+			$sql = 'set names ' . DB_CHARSET;
+			mysql_query( $sql, $dbh );
+		}
+		mysql_select_db( $dbset['name'], $dbh );
 
 		switch ( $this->site_mode ) {
 		case 'domain' :
@@ -42,11 +72,13 @@ class SiteManagerAdvancedCache {
 			$site_id = isset( $this->sites[$_SERVER['SERVER_NAME']] ) ? $this->sites[$_SERVER['SERVER_NAME']] : '';
 			$table = $table_prefix . $add_prefix;
 			break;
-			break;
 		case 'directory' :
-			$key = array_pop( explode( '/', trim( $_SERVER['REQUEST_URI'], '/' ), 2 ) );
+			$key = '/';
+			if ( trim( $_SERVER['REQUEST_URI'], '/' ) ) {
+				$key .= array_shift( explode( '/', trim( $_SERVER['REQUEST_URI'], '/' ), 2 ) ) . '/';
+			}
 			$add_prefix = isset( $this->sites[$key] ) && $this->sites[$key] != 1 ? $this->sites[$key] . '_' : '';
-			$site_id = isset( $this->sites[$key] ) ? $this->sites[$key] : '';
+			$site_id = isset( $this->sites[$key] ) ? $this->sites[$key] : BLOG_ID_CURRENT_SITE;
 			$table = $table_prefix . $add_prefix;
 			break;
 		default :
@@ -54,6 +86,20 @@ class SiteManagerAdvancedCache {
 			$site_id = '';
 		}
 ### REGEX INCLUDE ###
+
+		$sql = "SELECT option_value FROM {$table}options WHERE option_name = 'theme_switcher_disable' LIMIT 1";
+		$ret = mysql_query( $sql, $dbh );
+
+		
+		if ( $ret ) {
+			$theme_switcher_disable = mysql_result( $ret, 0 );
+		} else {
+			$theme_switcher_disable = false;
+		}
+
+		if ( $theme_switcher_disable || ( ! $group = $this->get_device_group() ) ) {
+			$group = '';
+		}
 		$protocol = isset( $_SERVER['HTTPS'] ) && $_SERVER['HTTPS'] == 'on' ? 'https' : 'http';
 
 		$requerst_query = '';
@@ -85,67 +131,54 @@ class SiteManagerAdvancedCache {
 		$device_url = implode( '|', $device_url );
 		$hash = md5( $device_url );
 
-		if ( defined( 'CACHE_DB_NAME' ) && defined( 'CACHE_DB_USER' ) && defined( 'CACHE_DB_PASSWORD' ) && defined( 'CACHE_DB_HOST' ) ) {
-			$dbset = array(
-				'host' => CACHE_DB_HOST,
-				'user' => CACHE_DB_USER,
-				'pass' => CACHE_DB_PASSWORD,
-				'name' => CACHE_DB_NAME
-				
-			);
-		} else {
-			$dbset = array(
-				'host' => DB_HOST,
-				'user' => DB_USER,
-				'pass' => DB_PASSWORD,
-				'name' => DB_NAME
-				
-			);
-		}
-
-		$dbh = mysql_connect( 
-			$dbset['host'],
-			$dbset['user'],
-			$dbset['pass'],
-			true
-		);
-
-		if ( $dbh ) {
-			if ( function_exists( 'mysql_set_charset' ) ) {
-				mysql_set_charset( DB_CHARSET, $dbh );
-			} else {
-				$sql = 'set names ' . DB_CHARSET;
-				mysql_query( $sql, $dbh );
-			}
-			mysql_select_db( $dbset['name'], $dbh );
-			$now = date( 'Y-m-d H:i:s' );
-			$sql = "
+		$now = date( 'Y-m-d H:i:s' );
+		$expire = date( 'Y-m-d H:i:s', time() - 30 );
+		$sql = "
 SELECT	*
 FROM	{$table}site_cache
 WHERE	`hash` = '$hash'
-AND		`expire_time` >= '$now'
+AND		`expire_time` >= '$expire'
 ";
-			$ret = mysql_query( $sql );
+		$ret = mysql_query( $sql );
 
-			if ( $ret ) {
-				while ( $row = mysql_fetch_object( $ret ) ) {
-					if ( $row->device_url == $device_url && strpos( $row->content, '<!-- page cached by WP SiteManager -->' ) !== false ) {
-						$headers = unserialize( $row->headers );
-						if ( $headers ) {
-							foreach ( $headers as $key => $header ) {
-								header( $key . ': ' . $header );
-							}
+		if ( $ret ) {
+			while ( $row = mysql_fetch_object( $ret ) ) {
+				if ( $row->device_url == $device_url && ( strpos( $row->content, '<!-- page cached by KUSANAGI. ' ) !== false || strpos( $row->content, '<!-- page cached by WP SiteManager. ' ) !== false ) ) {
+					if ( $row->expire_time < $now ) {
+						if ( ! $row->updating ) {
+							$sql = "
+UPDATE  {$table}site_cache
+SET     `updating` = 1
+WHERE   `hash` = '$hash'
+AND     `type` = '{$row->type}'
+AND     `expire_time` = '{$row->expire_time}'
+";
+							mysql_query( $sql );
+							break;
 						}
-						echo $row->content;
-						exit;
 					}
+					$headers = unserialize( $row->headers );
+					if ( $headers ) {
+						foreach ( $headers as $key => $header ) {
+							header( $key . ': ' . $header );
+						}
+					}
+					if ( $row->updating ) {
+						header( 'Cache-Control: no-cache' );
+						header( 'X-cache: updating' );
+					} else {
+						header( 'X-cache: cache' );
+					}
+					echo $row->content;
+					echo "\n" .'<!-- CacheID : ' . $row->hash . ' -->';   
+					exit;
 				}
 			}
-			mysql_close( $dbh );
 		}
+		mysql_close( $dbh );
 	}
-	
-	
+
+
 	function get_device_group() {
 		$path = preg_replace( '#^' . str_replace( '\\', '/', $_SERVER['DOCUMENT_ROOT'] ) . '#', '', str_replace( '\\', '/', ABSPATH ) );
 

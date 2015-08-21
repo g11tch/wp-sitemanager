@@ -4,7 +4,7 @@
  Plugin URI: http://www.prime-strategy.co.jp/
  Description: WP SiteManager is an integrated package comprising of necessary functions for using WordPress as a CMS.
  Author: Prime Strategy Co.,LTD.
- Version: 1.1.0
+ Version: 1.1.1
  Author URI: http://www.prime-strategy.co.jp/
  License: GPLv2 or later
 */

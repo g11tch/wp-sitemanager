@@ -317,6 +317,7 @@ private function get_unique_keywords() {
 
 private function get_ogp( $meta ) {
 	$og_output = '';
+	$og_output = apply_filters( 'wp_sitemanager_ogp_before' , $og_output );
 	$og_tags = array();
 
 	$image_width  = apply_filters( 'wp_sitemanager_open_graph_image_width', false );
@@ -349,17 +350,25 @@ private function get_ogp( $meta ) {
 	$og_tags = apply_filters( 'wp_sitemanager_open_graph_tags', $og_tags );
 
 	foreach ( (array)$og_tags as $tag_property => $tag_content ) {
-		if ( empty( $tag_content ) )
+		if ( empty( $tag_content ) ) {
 			continue; // Don't ever output empty tags
-
-		$og_output .= sprintf( '<meta property="%s" content="%s" />', esc_attr( $tag_property ), esc_attr( $tag_content ) ) . "\n";
+		}
+		if ( 'og:image' == $tag_property && is_array( $tag_content ) ) {
+			foreach ( $tag_content as $tag_multi_content ) {
+				$og_output .= sprintf( '<meta property="%s" content="%s" />', esc_attr( $tag_property ), esc_attr( $tag_multi_content ) ) . "\n";
+			}
+		} else {
+			$og_output .= sprintf( '<meta property="%s" content="%s" />', esc_attr( $tag_property ), esc_attr( $tag_content ) ) . "\n";
+		}
 	}
+	$og_output = apply_filters( 'wp_sitemanager_ogp_after' , $og_output );
 	return $og_output;
 }
 
 
 private function get_twitcards( $meta ) {
 	$tc_output = '';
+	$tc_output = apply_filters( 'wp_sitemanager_twitter_cards_before' , $tc_output );
 	$tc_tags = array();
 
 	$sns_meta = $this->get_sns_meta( $meta );
@@ -393,12 +402,12 @@ private function get_twitcards( $meta ) {
 	$tc_tags = apply_filters( 'wp_sitemanager_twitter_cards_tags', $tc_tags );
 	
 	foreach ( (array)$tc_tags as $tag_property => $tag_content ) {
-		if ( empty( $tag_content ) )
+		if ( empty( $tag_content ) ) {
 			continue; // Don't ever output empty tags
-
+		}
 		$tc_output .= sprintf( '<meta name="%s" content="%s" />', esc_attr( $tag_property ), esc_attr( $tag_content ) ) . "\n";
 	}
-
+	$tc_output = apply_filters( 'wp_sitemanager_twitter_cards_after' , $tc_output );
 	return $tc_output;
 }
 

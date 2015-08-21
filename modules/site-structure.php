@@ -972,7 +972,7 @@ class Walk_categoryNavi extends Walker_Category {
 
 class infinity_sub_navi_widget extends WP_Widget {
 	
-	function infinity_sub_navi_widget () {
+	public function __construct() {
 		$widget_ops = array(
 			'classname' => 'sub_navi-widget',
 			'description' => 'ホーム、投稿、固定ページでのサブナビをオールインワンで実現'
@@ -996,10 +996,10 @@ class infinity_sub_navi_widget extends WP_Widget {
 			'page_exclude_tree'			=> '',
 		);
 
-		$this->WP_Widget( 'sub_navi', 'サブナビ', $widget_ops, $widget_ops );
+		parent::__construct( 'sub_navi', 'サブナビ', $widget_ops, $widget_ops );
 	}
 
-	function widget( $args, $instance ) {
+	public function widget( $args, $instance ) {
 		global $post;
 		
 		$instance = wp_parse_args( (array)$instance, $this->defaults );
@@ -1246,7 +1246,7 @@ class infinity_sub_navi_widget extends WP_Widget {
 		}
 	}
 
-	function update( $new_instance, $old_instance ) {
+	public function update( $new_instance, $old_instance ) {
 		// validate
 		if ( ! isset( $new_instance['page_display_child_of'] ) ) {
 			$new_instance['page_display_child_of'] = 0;
@@ -1354,7 +1354,7 @@ class infinity_sub_navi_widget extends WP_Widget {
 	}
 	
 	
-	function add_nen_for_get_archives( $link_html ) {
+	public function add_nen_for_get_archives( $link_html ) {
 		$regex = array ( 
 			"/ title='([\d]{4})'/"	=> " title='$1年'",
 			"/ ([\d]{4}) /"			=> " $1年 ",

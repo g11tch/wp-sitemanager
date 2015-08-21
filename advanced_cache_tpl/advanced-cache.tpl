@@ -87,19 +87,10 @@ class SiteManagerAdvancedCache {
 		}
 ### REGEX INCLUDE ###
 
-		$sql = "SELECT option_value FROM {$table}options WHERE option_name = 'theme_switcher_disable' LIMIT 1";
-		$ret = mysql_query( $sql, $dbh );
-
-		
-		if ( $ret ) {
-			$theme_switcher_disable = mysql_result( $ret, 0 );
-		} else {
-			$theme_switcher_disable = false;
-		}
-
-		if ( $theme_switcher_disable || ( ! $group = $this->get_device_group() ) ) {
+		if ( ! $group = $this->get_device_group() ) {
 			$group = '';
 		}
+
 		$protocol = isset( $_SERVER['HTTPS'] ) && $_SERVER['HTTPS'] == 'on' ? 'https' : 'http';
 
 		$requerst_query = '';

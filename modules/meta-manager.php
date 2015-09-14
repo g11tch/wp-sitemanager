@@ -172,7 +172,7 @@ function output_meta() {
 	if ( $meta['keywords'] ) {
 		$output .= '<meta name="keywords" content="' . esc_attr( $meta['keywords'] ) . '" />' . "\n";
 	}
-	
+	$output .= apply_filters( 'wp_sitemanager_after_keywords', '' );
 	if ( is_home() || is_front_page() ) {
 		$meta['description'] = ! empty ( $meta['description'] ) ? $meta['description'] : get_bloginfo( 'description' );
 	} elseif ( is_singular() ) {
@@ -182,7 +182,7 @@ function output_meta() {
 	if ( $meta['description'] ) {
 		$output .= '<meta name="description" content="' . esc_attr( $meta['description'] ) . '" />' . "\n";
 	}
-
+	$output .= apply_filters( 'wp_sitemanager_after_description', '' );
 	// OGP
 	if ( isset( $this->setting['ogp_output'] ) && $this->setting['ogp_output'] ) {
 		$output .= "\n<!-- WP SiteManager OGP Tags -->\n";
@@ -191,12 +191,13 @@ function output_meta() {
 		$og_output = $this->get_ogp( $meta );
 		$output .= $og_output;
 	}
+	$output .= apply_filters( 'wp_sitemanager_after_ogp', '' );
 	if ( isset( $this->setting['twitcards_output'] ) && $this->setting['twitcards_output'] ) {
 		$output .= "\n<!-- WP SiteManager Twitter Cards Tags -->\n";
 		$tc_output = $this->get_twitcards( $meta );
 		$output .= $tc_output;
 	}
-
+	$output .= apply_filters( 'wp_sitemanager_after_twitcards', '' );
 	echo $output;
 }
 

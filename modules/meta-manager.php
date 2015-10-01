@@ -211,6 +211,14 @@ private function get_meta() {
 		$option = $this->get_post_meta();
 	} elseif ( is_tax() || is_category() || is_tag() ) {
 		$option = $this->get_term_meta();
+	} elseif ( is_author() ) {
+		$author_obj = get_queried_object();
+		$option['keywords'] = $author_obj->display_name;
+		$option['description'] = ! empty( $author_obj->description ) ? $author_obj->description : false;
+	} elseif ( is_post_type_archive() ) {
+		$posttype_obj = get_queried_object();
+		$option['keywords'] = $posttype_obj->labels->name;
+		$option['description'] = ! empty( $posttype_obj->description ) ? $posttype_obj->description : false;
 	}
 
 	if ( ! empty( $option ) && $option['keywords'] ) {
@@ -224,6 +232,7 @@ private function get_meta() {
 	}
 	$this->meta_description_chars = apply_filters( 'wp_sitemanager_meta_description_chars', $this->meta_description_chars );
 	$meta['description'] = mb_substr( $meta['description'], 0, $this->meta_description_chars, 'UTF-8' );
+	$meta = apply_filters( 'wp_sitemanager_meta', $meta );
 	return $meta;
 }
 

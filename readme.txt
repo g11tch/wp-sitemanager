@@ -2,8 +2,8 @@
 Contributors: primestrategy, jim912, Kengyu Nakamura
 Tags: cms, mobile, sitemap, pager, page navi, breadcrumb
 Requires at least: 3.5
-Tested up to: 4.3
-Stable tag: 1.1.3
+Tested up to: 4.3.1
+Stable tag: 1.1.4
 
 WP SiteManager is an integrated package comprising of necessary functions for using WordPress as a CMS.
 
@@ -33,6 +33,8 @@ In addition, it also makes possible snippet optimization through management of m
 2. Go to plugins list and activate "WP SiteManager". 
 
 == Changelog ==
+= 1.1.4 =
+* change : advanced-cache.php database functions replaced by mysqli.
 = 1.1.3 =
 * add : new filter hooks (wp_sitemanager_meta)
 * add : add author display_name and post_type lavel added to meta keywords.

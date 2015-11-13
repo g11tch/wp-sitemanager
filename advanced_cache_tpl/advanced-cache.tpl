@@ -51,20 +51,20 @@ class SiteManagerAdvancedCache {
 			);
 		}
 
-		$dbh = mysql_connect( 
+		$dbh = mysqli_connect( 
 			$dbset['host'],
 			$dbset['user'],
 			$dbset['pass'],
-			true
+			$dbset['name']
 		);
 		if ( false === $dbh ) { return; }
-		if ( function_exists( 'mysql_set_charset' ) ) {
-			mysql_set_charset( DB_CHARSET, $dbh );
+		if ( function_exists( 'mysqli_set_charset' ) ) {
+			mysqli_set_charset( $dbh, DB_CHARSET );
 		} else {
 			$sql = 'set names ' . DB_CHARSET;
-			mysql_query( $sql, $dbh );
+			mysqli_query( $dbh, $sql );
 		}
-		mysql_select_db( $dbset['name'], $dbh );
+		mysqli_select_db( $gbh, $dbset['name'] );
 
 		switch ( $this->site_mode ) {
 		case 'domain' :
@@ -130,10 +130,10 @@ FROM	{$table}site_cache
 WHERE	`hash` = '$hash'
 AND		`expire_time` >= '$expire'
 ";
-		$ret = mysql_query( $sql );
+		$ret = mysqli_query( $dbh, $sql );
 
 		if ( $ret ) {
-			while ( $row = mysql_fetch_object( $ret ) ) {
+			while ( $row = mysqli_fetch_object( $ret ) ) {
 				if ( $row->device_url == $device_url && ( strpos( $row->content, '<!-- page cached by KUSANAGI. ' ) !== false || strpos( $row->content, '<!-- page cached by WP SiteManager. ' ) !== false ) ) {
 					if ( $row->expire_time < $now ) {
 						if ( ! $row->updating ) {
@@ -144,7 +144,7 @@ WHERE   `hash` = '$hash'
 AND     `type` = '{$row->type}'
 AND     `expire_time` = '{$row->expire_time}'
 ";
-							mysql_query( $sql );
+							mysqli_query( $dbh, $sql );
 							break;
 						}
 					}
@@ -166,7 +166,7 @@ AND     `expire_time` = '{$row->expire_time}'
 				}
 			}
 		}
-		mysql_close( $dbh );
+		mysqli_close( $dbh );
 	}
 
 
